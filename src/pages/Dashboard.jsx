@@ -47,7 +47,7 @@ export default function Dashboard() {
                     </div>
                     <button
                         onClick={signOut}
-                        className="flex items-center gap-2 text-sm text-red-500 hover:text-red-600 font-medium transition-colors"
+                        className="cursor-pointer flex items-center gap-2 text-sm text-red-500 hover:text-red-600 font-medium transition-colors"
                     >
                         <LogOut className="w-4 h-4" />
                         Logout
@@ -121,7 +121,7 @@ export default function Dashboard() {
                             <div className="text-center py-10">
                                 <span className="text-4xl">🧾</span>
                                 <p className="text-gray-500 text-sm mt-3">No bills yet. Create one to get started!</p>
-                                <button className="mt-4 px-6 py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition-colors">
+                                <button className="cursor-pointer mt-4 px-6 py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition-colors">
                                     + New Bill
                                 </button>
                             </div>
