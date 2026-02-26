@@ -1,57 +1,86 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Mail, Lock, ArrowRight } from 'lucide-react'
+import toast, { Toaster } from 'react-hot-toast'
 
 export default function Login() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const { signIn } = useAuth()
     const navigate = useNavigate()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setError('')
-        if (!email || !password) {
-            setError('All fields are required')
-            return
-        }
+        if (!email || !password) return toast.error('All fields are required')
         setLoading(true)
         try {
             await signIn(email, password)
             navigate('/dashboard')
-        } catch (err) {
-            setError('Incorrect email or password')
+        } catch {
+            toast.error('Incorrect email or password')
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <div style={styles.container}>
-            <div style={styles.card}>
-                <h1 style={styles.title}>Welcome Back</h1>
-                {error && <div style={styles.error}>{error}</div>}
-                <form onSubmit={handleSubmit}>
-                    <input style={styles.input} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-                    <input style={styles.input} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-                    <button style={styles.button} type="submit" disabled={loading}>
-                        {loading ? 'Signing in...' : 'Sign In'}
-                    </button>
+        <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
+            <Toaster position="top-center" />
+            <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="bg-white rounded-3xl shadow-xl w-full max-w-md p-8"
+            >
+                <div className="text-center mb-8">
+                    <div className="w-14 h-14 bg-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">💸</span>
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900">Welcome back!</h1>
+                    <p className="text-gray-500 mt-1 text-sm">Sign in to your BillSplitter account</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-3.5 text-gray-400 w-4 h-4" />
+                        <input
+                            type="email"
+                            placeholder="Email address"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-400 text-sm"
+                        />
+                    </div>
+
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-3.5 text-gray-400 w-4 h-4" />
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-400 text-sm"
+                        />
+                    </div>
+
+                    <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        type="submit"
+                        disabled={loading}
+                        className="cursor-pointer w-full bg-violet-600 hover:bg-violet-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+                    >
+                        {loading ? 'Signing in...' : <>Sign In <ArrowRight className="w-4 h-4" /></>}
+                    </motion.button>
                 </form>
-                <p style={styles.link}>Don't have an account? <Link to="/register">Register</Link></p>
-            </div>
+
+                <p className="text-center text-sm text-gray-500 mt-6">
+                    Don't have an account?{' '}
+                    <Link to="/register" className="text-violet-600 font-semibold hover:underline">Register</Link>
+                </p>
+            </motion.div>
         </div>
     )
-}
-
-const styles = {
-    container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9fa' },
-    card: { backgroundColor: '#fff', padding: '40px', borderRadius: '12px', width: '100%', maxWidth: '420px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
-    title: { fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center', color: '#1a1a2e' },
-    error: { backgroundColor: '#fee2e2', color: '#dc2626', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' },
-    input: { width: '100%', padding: '12px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box', backgroundColor: '#fff', color: '#1a1a2e' },
-    button: { width: '100%', padding: '14px', backgroundColor: '#4f46e5', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: 'pointer' },
-    link: { textAlign: 'center', marginTop: '16px', fontSize: '14px', color: '#666' },
 }
