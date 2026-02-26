@@ -127,7 +127,38 @@ export default function Dashboard() {
                             </div>
                         </motion.div>
 
-
+                        {/* Account Plans */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6"
+                        >
+                            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <Shield className="w-4 h-4 text-violet-500" /> Account Plans
+                            </h3>
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    { type: 'Guest', emoji: '👤', color: 'bg-gray-50 border-gray-200', badge: 'bg-gray-100 text-gray-600', perks: ['View bills only', '6hr access limit', 'No registration needed'] },
+                                    { type: 'Standard', emoji: '⭐', color: 'bg-violet-50 border-violet-200', badge: 'bg-violet-100 text-violet-700', perks: ['Up to 5 bills', 'Up to 3 members', 'Full access'] },
+                                    { type: 'Premium', emoji: '🚀', color: 'bg-amber-50 border-amber-200', badge: 'bg-amber-100 text-amber-700', perks: ['Unlimited bills', 'Unlimited members', 'Priority support'] },
+                                ].map(({ type, emoji, color, badge, perks }) => (
+                                    <div key={type} className={`rounded-2xl border p-4 ${color} ${profile?.account_type === type.toLowerCase() ? 'ring-2 ring-violet-400' : ''}`}>
+                                        <div className="text-center mb-3">
+                                            <span className="text-2xl">{emoji}</span>
+                                            <span className={`block mt-1 text-xs font-bold px-2 py-0.5 rounded-full ${badge}`}>{type}</span>
+                                        </div>
+                                        <ul className="space-y-1">
+                                            {perks.map(perk => (
+                                                <li key={perk} className="text-xs text-gray-600 flex items-start gap-1">
+                                                    <span className="text-green-500 mt-0.5">✓</span> {perk}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
                     </>
                 )}
             </div>
