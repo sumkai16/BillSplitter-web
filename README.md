@@ -30,7 +30,7 @@ npm -v
 
 ---
 
-## Setup on a New Device
+## Setup
 
 ### 1. Clone the Repository
 
