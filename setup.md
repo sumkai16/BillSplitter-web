@@ -1,16 +1,36 @@
 # BillSplitter Web — Setup Guide
 
-## Prerequisites
+## Tech Stack
 
-Make sure the following are installed on your machine before proceeding:
-
-- [Node.js](https://nodejs.org) (v18 or higher recommended)
-- [Git](https://git-scm.com)
-- A code editor (e.g. [VS Code](https://code.visualstudio.com))
+| Technology | Purpose |
+|---|---|
+| React 19 + Vite 7 | Frontend framework |
+| Tailwind CSS | Utility-first styling |
+| Framer Motion | Animations |
+| Lucide React | Icons |
+| React Hot Toast | Toast notifications |
+| React Router DOM | Page navigation |
+| Supabase | Authentication + Database |
 
 ---
 
-## Getting Started on a New Device
+## Prerequisites
+
+Make sure the following are installed before proceeding:
+
+- [Node.js](https://nodejs.org) v18 or higher
+- [Git](https://git-scm.com)
+- A code editor — [VS Code](https://code.visualstudio.com) recommended
+
+Verify Node.js is installed:
+```bash
+node -v
+npm -v
+```
+
+---
+
+## Setup on a New Device
 
 ### 1. Clone the Repository
 
@@ -25,18 +45,20 @@ cd BillSplitter-web
 npm install
 ```
 
-> This reads `package.json` and installs all required packages into `node_modules`. Never commit `node_modules` to Git.
+> This reads `package.json` and installs everything into `node_modules`. This folder is never committed to Git — always run `npm install` on a fresh clone.
 
 ### 3. Create the Environment File
 
-Create a `.env` file in the **root of the project** (same level as `package.json`):
+Create a `.env` file in the **root of the project** (same folder as `package.json`):
 
 ```
 VITE_SUPABASE_URL=https://yajfsgtsomlzvrwnswcg.supabase.co
 VITE_SUPABASE_ANON_KEY=your_anon_key_here
 ```
 
-> ⚠️ This file is intentionally excluded from Git for security. You must create it manually on every new device. Get the values from your Supabase dashboard under **Settings → API Keys → Legacy**.
+> ⚠️ This file is excluded from Git intentionally. You must create it manually on every new device. Get the values from your Supabase dashboard under **Settings → API Keys → Legacy API Keys**.
+
+> ⚠️ Never use your `service_role` key here — only the `anon` public key.
 
 ### 4. Start the Development Server
 
@@ -56,33 +78,24 @@ http://localhost:5173
 
 ```
 BillSplitter-web/
-├── public/               # Static assets
+├── public/                   # Static assets
 ├── src/
 │   ├── context/
 │   │   └── AuthContext.jsx   # Global auth state (login, register, logout)
 │   ├── lib/
-│   │   └── supabase.js       # Supabase client connection
+│   │   └── supabase.js       # Supabase client — reads from .env
 │   ├── pages/
 │   │   ├── Login.jsx         # Login page
-│   │   └── Register.jsx      # Registration page
-│   ├── App.jsx               # Routes and navigation
+│   │   ├── Register.jsx      # Registration page with validation
+│   │   └── Dashboard.jsx     # Main dashboard after login
+│   ├── App.jsx               # Routes and protected route logic
 │   ├── main.jsx              # App entry point
-│   └── index.css             # Global styles
-├── .env                  # Environment variables (DO NOT commit)
-├── .gitignore            # Files excluded from Git
-└── package.json          # Project dependencies
+│   └── index.css             # Tailwind CSS import
+├── .env                      # Environment variables (DO NOT commit)
+├── .gitignore                # Files excluded from Git
+├── vite.config.js            # Vite + Tailwind configuration
+└── package.json              # Project dependencies
 ```
-
----
-
-## Tech Stack
-
-| Technology | Purpose |
-|---|---|
-| React + Vite | Frontend framework |
-| React Router | Page navigation |
-| Supabase | Authentication + Database |
-| PostgreSQL | Database (via Supabase) |
 
 ---
 
@@ -97,38 +110,85 @@ BillSplitter-web/
 
 ---
 
-## Common Issues
+## Supabase Setup
 
-**Blank white screen**
-- Check browser console (F12) for errors
-- Make sure `.env` file exists and has correct values
-- Stop the server and run `npx vite --force` to clear cache
+This project uses an existing Supabase project. The database and auth are already configured. You only need the `.env` credentials to connect.
 
-**`npm install` fails**
-- Make sure you're in the correct project folder
-- Try deleting `node_modules` and running `npm install` again
-- Never run `npm audit fix --force` — it breaks package versions
+### Database Tables
 
-**Supabase connection error**
-- Double check your `.env` values match the Supabase dashboard
-- Make sure there are no spaces around the `=` sign in `.env`
+| Table | Purpose |
+|---|---|
+| `profiles` | Stores user info (name, nickname, username, account type) |
+| `bills` | Bill records created by users |
+| `bill_members` | Users belonging to each bill |
+| `expenses` | Expenses added to bills |
+| `expense_splits` | How expenses are split per member |
+
+### User Account Types
+
+| Type | Description |
+|---|---|
+| `guest` | View-only, 6hr access limit, no registration needed |
+| `standard` | Default for new registrations, up to 5 bills and 3 members |
+| `premium` | Unlimited bills and members |
+
+To manually change a user's account type via Supabase SQL Editor:
+```sql
+update profiles 
+set account_type = 'premium' 
+where username = 'yourusername';
+```
 
 ---
 
-## Useful Commands
+## Available Scripts
 
 ```bash
 npm run dev        # Start development server
 npm run build      # Build for production
 npm run preview    # Preview production build locally
+npm run lint       # Run ESLint
 ```
 
 ---
 
-## Deployment Notes
+## Common Issues
+
+**Blank white screen**
+- Open browser console (F12) and check for errors
+- Make sure `.env` file exists with correct values
+- Stop server and run `npx vite --force` to clear cache
+
+**`npm install` fails**
+- Make sure you're in the correct project folder
+- Delete `node_modules` and run `npm install` again
+- Never run `npm audit fix --force` — it breaks package versions
+
+**Supabase connection error**
+- Double check `.env` values match your Supabase dashboard
+- Make sure there are no spaces around the `=` sign in `.env`
+- Restart the dev server after editing `.env`
+
+**Port already in use**
+- Another Vite instance is running. Stop it or use a different port:
+```bash
+npx vite --port 3000
+```
+
+---
+
+## Deployment (After Deadline)
 
 Before deploying to production:
 
-- Enable **email confirmation** in Supabase → Authentication → Providers → Email
-- Set environment variables on your hosting platform (Vercel, Netlify, etc.)
-- Never expose your `service_role` key — only use the `anon` key in the frontend
+1. Enable **email confirmation** — Supabase → Authentication → Providers → Email → turn on Confirm email
+2. Set environment variables on your hosting platform (Vercel or Netlify recommended)
+3. Run `npm run build` and deploy the `dist` folder
+
+### Deploy to Vercel (recommended)
+```bash
+npm install -g vercel
+vercel
+```
+
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Vercel's environment variables dashboard.
