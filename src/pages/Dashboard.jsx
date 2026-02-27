@@ -51,31 +51,30 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-100">
       <Toaster position="top-center" />
 
-      <nav className="  bg-white/70 backdrop-blur-md border-b border-white/40 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="w-28 h-12 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl shadow-md flex items-center justify-center">
-            <span className="text-xl font-black text-white tracking-wide">
-              SPLITIFY
-            </span>
-          </div>
+      <div className="flex justify-between items-center px-8 py-5">
+        <img
+          src="/hlogo.png"
+          alt="Logo"
+          className="w-50 h-auto object-contain"
+        />
 
-          <div className="flex items-center gap-6">
-            <span className="text-sm text-slate-600 font-medium">
-              {profile?.first_name}
-            </span>
+        <div className="flex items-center gap-6">
+          <span className="text-xl text-slate-600 font-medium">
+            {profile?.first_name}
+          </span>
 
-            <button
-              onClick={signOut}
-              className=" transition-all duration-300 hover:scale-102 flex items-center gap-2 text-sm text-red-500 hover:text-red-600 transition"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
-          </div>
+          <button
+            onClick={signOut}
+            className="transition-all duration-300 hover:scale-102 flex items-center gap-2 text-xl text-red-500 hover:text-red-600"
+          >
+            <LogOut className="w-6 h-6" />
+            Logout
+          </button>
         </div>
-      </nav>
+      </div>
 
-      <div className="  max-w-6xl mx-auto px-6 py-10 space-y-8">
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
@@ -85,7 +84,7 @@ export default function Dashboard() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className=" transition-all duration-300 hover:scale-102 hover:shadow-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-8 text-white shadow-xl"
+              className="transition-all duration-300 hover:scale-102 hover:shadow-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-8 text-white shadow-xl"
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -112,14 +111,9 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6 "
+              className="grid grid-cols-1 md:grid-cols-3 gap-6"
             >
-              <StatCard
-                icon={Receipt}
-                label="Total Bills"
-                value=""
-                className=""
-              />
+              <StatCard icon={Receipt} label="Total Bills" value="" />
               <StatCard icon={Users} label="Active Members" value="" />
               <StatCard icon={Wallet} label="Total Expenses" value="" />
             </motion.div>
@@ -128,7 +122,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className=" cursor-pointer transition-all duration-300 hover:scale-102 hover:shadow-lg bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
+              className="cursor-pointer transition-all duration-300 hover:scale-102 hover:shadow-lg bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
             >
               <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                 <User className="w-4 h-4 text-emerald-500" />
@@ -138,23 +132,18 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {[
                   { icon: Mail, label: "Email", value: profile?.email },
-                  {
-                    icon: AtSign,
-                    label: "Nickname",
-                    value: profile?.nickname,
-                  },
-                  {
-                    icon: Shield,
-                    label: "Account Type",
-                    value: profile?.account_type,
-                  },
+                  { icon: AtSign, label: "Nickname", value: profile?.nickname },
+                  { icon: Shield, label: "Account Type", value: profile?.account_type },
                   {
                     icon: Calendar,
                     label: "Member Since",
-                    value: new Date(profile?.created_at).toLocaleDateString(
-                      "en-US",
-                      { year: "numeric", month: "long", day: "numeric" },
-                    ),
+                    value: profile?.created_at
+                      ? new Date(profile.created_at).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "",
                   },
                 ].map(({ icon: Icon, label, value }) => (
                   <div
@@ -177,7 +166,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className=" cursor-pointer transition-all duration-300 hover:scale-102 hover:shadow-lg bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
+              className="cursor-pointer transition-all duration-300 hover:scale-102 hover:shadow-lg bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
             >
               <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-emerald-500" />
@@ -190,7 +179,7 @@ export default function Dashboard() {
                   No bills yet. Create one to get started!
                 </p>
 
-                <button className=" cursor-pointer transition-all duration-300 hover:scale-103 mt-4 px-6 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-sm font-semibold hover:from-emerald-700 hover:to-teal-700 transition shadow-md">
+                <button className="cursor-pointer transition-all duration-300 hover:scale-103 mt-4 px-6 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-sm font-semibold hover:from-emerald-700 hover:to-teal-700 shadow-md">
                   + New Bill
                 </button>
               </div>
@@ -204,7 +193,7 @@ export default function Dashboard() {
 
 function StatCard({ icon: Icon, label, value }) {
   return (
-    <div className=" cursor-pointer bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6 transition-all duration-300 hover:scale-102 hover:shadow-lg hover:border-2 hover:border-emerald-200 hover:rounded-xl ">
+    <div className="cursor-pointer bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6 transition-all duration-300 hover:scale-102 hover:shadow-lg hover:border-2 hover:border-emerald-200 hover:rounded-xl">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">{label}</p>
         <Icon className="w-5 h-5 text-emerald-500" />
