@@ -36,18 +36,22 @@ export default function Login() {
         transition={{ duration: 0.8, ease: "easeInOut" }}
         className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-white/40 w-full max-w-md p-8"
       >
-        <div className="text-center mb-8 flex items-center justify-center flex-col">
-          <div className="w-28 h-14 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl shadow-md flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl font-black text-white tracking-wide">
-              SPLITIFY
-            </span>
-          </div>
+    <div className="flex justify-center mb-6">
+  <img
+    src="public/hlogo.png"
+    alt="Logo"
+    className="w-48 h-auto object-contain"
+  />
+</div>
 
-          <h1 className="text-2xl font-bold text-slate-800">Welcome back!</h1>
-          <p className="text-slate-500 mt-1 text-sm">
-            Sign in to your Bill Split account
-          </p>
-        </div>
+<div className="text-center mb-8">
+  <h1 className="text-2xl font-bold text-slate-800">
+    Welcome back!
+  </h1>
+  <p className="text-slate-500 mt-1 text-sm">
+    Sign in to your Bill Split account
+  </p>
+</div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
