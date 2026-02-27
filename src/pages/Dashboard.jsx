@@ -1,167 +1,215 @@
-import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
-import { motion } from 'framer-motion'
-import { LogOut, User, Mail, AtSign, Shield, Calendar, Receipt } from 'lucide-react'
-import toast, { Toaster } from 'react-hot-toast'
+import { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
+import { motion } from "framer-motion";
+import {
+  LogOut,
+  User,
+  Mail,
+  AtSign,
+  Shield,
+  Calendar,
+  Receipt,
+  Users,
+  Wallet,
+} from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
 
 const accountBadge = {
-    guest: { label: 'Guest', color: 'bg-gray-100 text-gray-600' },
-    standard: { label: 'Standard', color: 'bg-violet-100 text-violet-700' },
-    premium: { label: 'Premium ⭐', color: 'bg-amber-100 text-amber-700' },
-}
+  guest: { label: "Guest", color: "bg-gray-100 text-gray-600" },
+  standard: { label: "Standard", color: "bg-emerald-100 text-emerald-700" },
+  premium: { label: "Premium ⭐", color: "bg-amber-100 text-amber-700" },
+};
 
 export default function Dashboard() {
-    const { user, signOut } = useAuth()
-    const [profile, setProfile] = useState(null)
-    const [loading, setLoading] = useState(true)
+  const { user, signOut } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    if (!user) return null
+  if (!user) return null;
 
-    useEffect(() => {
-        const fetchProfile = async () => {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single()
-            if (error) toast.error('Failed to load profile')
-            else setProfile(data)
-            setLoading(false)
-        }
-        fetchProfile()
-    }, [user.id])
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
 
-    const badge = accountBadge[profile?.account_type] || accountBadge.standard
+      if (error) toast.error("Failed to load profile");
+      else setProfile(data);
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50">
-            <Toaster position="top-center" />
+      setLoading(false);
+    };
 
-            {/* Navbar */}
-            <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-10">
-                <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xl">💸</span>
-                        <span className="font-bold text-gray-900 text-lg">BillSplitter</span>
-                    </div>
-                    <button
-                        onClick={signOut}
-                        className="cursor-pointer flex items-center gap-2 text-sm text-red-500 hover:text-red-600 font-medium transition-colors"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        Logout
-                    </button>
-                </div>
-            </nav>
+    fetchProfile();
+  }, [user.id]);
 
-            <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-                {loading ? (
-                    <div className="flex justify-center py-20">
-                        <div className="w-8 h-8 border-4 border-violet-400 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                ) : (
-                    <>
-                        {/* Welcome Card */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-3xl p-8 text-white shadow-lg"
-                        >
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <p className="text-violet-200 text-sm mb-1">Welcome back ya</p>
-                                    <h2 className="text-2xl font-bold">{profile?.first_name} {profile?.last_name}</h2>
-                                    <p className="text-violet-300 text-sm mt-1">@{profile?.username}</p>
-                                </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${badge.color}`}>
-                                    {badge.label}
-                                </span>
-                            </div>
-                        </motion.div>
+  const badge = accountBadge[profile?.account_type] || accountBadge.standard;
 
-                        {/* Account Details */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6"
-                        >
-                            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                <User className="w-4 h-4 text-violet-500" /> Account Details
-                            </h3>
-                            <div className="space-y-3">
-                                {[
-                                    { icon: Mail, label: 'Email', value: profile?.email },
-                                    { icon: AtSign, label: 'Nickname', value: profile?.nickname },
-                                    { icon: Shield, label: 'Account Type', value: profile?.account_type },
-                                    { icon: Calendar, label: 'Member Since', value: new Date(profile?.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) },
-                                ].map(({ icon: Icon, label, value }) => (
-                                    <div key={label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                                        <div className="flex items-center gap-2 text-gray-500 text-sm">
-                                            <Icon className="w-4 h-4" />
-                                            {label}
-                                        </div>
-                                        <span className="text-gray-900 text-sm font-medium">{value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-100">
+      <Toaster position="top-center" />
 
-                        {/* Bills Placeholder */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6"
-                        >
-                            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                <Receipt className="w-4 h-4 text-violet-500" /> My Bills
-                            </h3>
-                            <div className="text-center py-10">
-                                <span className="text-4xl">🧾</span>
-                                <p className="text-gray-500 text-sm mt-3">No bills yet. Create one to get started!</p>
-                                <button className="cursor-pointer mt-4 px-6 py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition-colors">
-                                    + New Bill
-                                </button>
-                            </div>
-                        </motion.div>
+      <nav className="  bg-white/70 backdrop-blur-md border-b border-white/40 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="w-28 h-12 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl shadow-md flex items-center justify-center">
+            <span className="text-xl font-black text-white tracking-wide">
+              SPLITIFY
+            </span>
+          </div>
 
-                        {/* Account Plans */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6"
-                        >
-                            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                <Shield className="w-4 h-4 text-violet-500" /> Account Plans
-                            </h3>
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    { type: 'Guest', emoji: '👤', color: 'bg-gray-50 border-gray-200', badge: 'bg-gray-100 text-gray-600', perks: ['View bills only', '6hr access limit', 'No registration needed'] },
-                                    { type: 'Standard', emoji: '⭐', color: 'bg-violet-50 border-violet-200', badge: 'bg-violet-100 text-violet-700', perks: ['Up to 5 bills', 'Up to 3 members', 'Full access'] },
-                                    { type: 'Premium', emoji: '🚀', color: 'bg-amber-50 border-amber-200', badge: 'bg-amber-100 text-amber-700', perks: ['Unlimited bills', 'Unlimited members', 'Priority support'] },
-                                ].map(({ type, emoji, color, badge, perks }) => (
-                                    <div key={type} className={`rounded-2xl border p-4 ${color} ${profile?.account_type === type.toLowerCase() ? 'ring-2 ring-violet-400' : ''}`}>
-                                        <div className="text-center mb-3">
-                                            <span className="text-2xl">{emoji}</span>
-                                            <span className={`block mt-1 text-xs font-bold px-2 py-0.5 rounded-full ${badge}`}>{type}</span>
-                                        </div>
-                                        <ul className="space-y-1">
-                                            {perks.map(perk => (
-                                                <li key={perk} className="text-xs text-gray-600 flex items-start gap-1">
-                                                    <span className="text-green-500 mt-0.5">✓</span> {perk}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </div>
+          <div className="flex items-center gap-6">
+            <span className="text-sm text-slate-600 font-medium">
+              {profile?.first_name}
+            </span>
+
+            <button
+              onClick={signOut}
+              className=" transition-all duration-300 hover:scale-102 flex items-center gap-2 text-sm text-red-500 hover:text-red-600 transition"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
         </div>
-    )
+      </nav>
+
+      <div className="  max-w-6xl mx-auto px-6 py-10 space-y-8">
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className=" transition-all duration-300 hover:scale-102 hover:shadow-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-8 text-white shadow-xl"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-emerald-100 text-sm mb-1">
+                    Welcome back 👋
+                  </p>
+                  <h2 className="text-2xl font-bold">
+                    {profile?.first_name} {profile?.last_name}
+                  </h2>
+                  <p className="text-emerald-200 text-sm mt-1">
+                    @{profile?.username}
+                  </p>
+                </div>
+
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold ${badge.color}`}
+                >
+                  {badge.label}
+                </span>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-6 "
+            >
+              <StatCard
+                icon={Receipt}
+                label="Total Bills"
+                value=""
+                className=""
+              />
+              <StatCard icon={Users} label="Active Members" value="" />
+              <StatCard icon={Wallet} label="Total Expenses" value="" />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className=" cursor-pointer transition-all duration-300 hover:scale-102 hover:shadow-lg bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
+            >
+              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <User className="w-4 h-4 text-emerald-500" />
+                Account Details
+              </h3>
+
+              <div className="space-y-3">
+                {[
+                  { icon: Mail, label: "Email", value: profile?.email },
+                  {
+                    icon: AtSign,
+                    label: "Nickname",
+                    value: profile?.nickname,
+                  },
+                  {
+                    icon: Shield,
+                    label: "Account Type",
+                    value: profile?.account_type,
+                  },
+                  {
+                    icon: Calendar,
+                    label: "Member Since",
+                    value: new Date(profile?.created_at).toLocaleDateString(
+                      "en-US",
+                      { year: "numeric", month: "long", day: "numeric" },
+                    ),
+                  },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0"
+                  >
+                    <div className="flex items-center gap-2 text-slate-500 text-sm">
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </div>
+                    <span className="text-slate-800 text-sm font-medium">
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className=" cursor-pointer transition-all duration-300 hover:scale-102 hover:shadow-lg bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
+            >
+              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-emerald-500" />
+                My Bills
+              </h3>
+
+              <div className="text-center py-10">
+                <span className="text-4xl">🧾</span>
+                <p className="text-slate-500 text-sm mt-3">
+                  No bills yet. Create one to get started!
+                </p>
+
+                <button className=" cursor-pointer transition-all duration-300 hover:scale-103 mt-4 px-6 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-sm font-semibold hover:from-emerald-700 hover:to-teal-700 transition shadow-md">
+                  + New Bill
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value }) {
+  return (
+    <div className=" cursor-pointer bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6 transition-all duration-300 hover:scale-102 hover:shadow-lg hover:border-2 hover:border-emerald-200 hover:rounded-xl ">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">{label}</p>
+        <Icon className="w-5 h-5 text-emerald-500" />
+      </div>
+      <h3 className="text-2xl font-bold text-slate-800 mt-2">{value}</h3>
+    </div>
+  );
 }
