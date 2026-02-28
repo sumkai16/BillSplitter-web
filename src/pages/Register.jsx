@@ -78,7 +78,7 @@ export default function Register() {
         <img
           src="public/hlogo.png"
           alt="Logo"
-          className="w-48 h-auto object-contain"
+          className="w-48 h-auto object-contain transition-transform duration-300 hover:scale-110 cursor-pointer"
         />
       </div>
 

@@ -53,9 +53,9 @@ export default function Dashboard() {
 
       <div className="flex justify-between items-center px-8 py-5">
         <img
-          src="/hlogo.png"
+          src="public/hlogo.png"
           alt="Logo"
-          className="w-50 h-auto object-contain"
+          className="w-50 h-auto object-contain transition-transform duration-300 hover:scale-110 cursor-pointer"
         />
 
         <div className="flex items-center gap-6">
@@ -73,7 +73,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">
         {loading ? (
           <div className="flex justify-center py-20">

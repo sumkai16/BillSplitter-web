@@ -40,13 +40,13 @@ export default function Login() {
   <img
     src="public/hlogo.png"
     alt="Logo"
-    className="w-48 h-auto object-contain"
+    className="w-48 h-auto object-contain transition-transform duration-300 hover:scale-110 cursor-pointer"
   />
 </div>
 
 <div className="text-center mb-8">
   <h1 className="text-2xl font-bold text-slate-800">
-    Welcome back!
+    WELCOME BACK!
   </h1>
   <p className="text-slate-500 mt-1 text-sm">
     Sign in to your Bill Split account
@@ -72,7 +72,7 @@ export default function Login() {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white/70 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 text-sm transition"
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white/70 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 text-sm transition "
             />
           </div>
 
