@@ -377,15 +377,24 @@ export default function Dashboard() {
     </div>
   );
 }
-
 function StatCard({ icon: Icon, label, value }) {
   return (
-    <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -6, scale: 1.02 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6 shadow-lg hover:shadow-emerald-500/10 transition"
+    >
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">{label}</p>
         <Icon className="w-5 h-5 text-emerald-500" />
       </div>
-      <h3 className="text-2xl font-bold text-white mt-2">{value}</h3>
-    </div>
+
+      <h3 className="text-2xl font-bold text-white mt-2">
+        {value}
+      </h3>
+    </motion.div>
   );
 }
