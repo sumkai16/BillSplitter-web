@@ -52,16 +52,16 @@ export default function Register() {
     try {
 
       //validate if email already exists
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', email)
-        .single()
-      if (error || !data) {
-        toast.error("Email already exists");
-        setLoading(false);
-        return;
-      }
+      // const { data, error } = await supabase
+      //   .from('profiles')
+      //   .select('email')
+      //   .eq('email', email)
+      //   .single()
+      // if (error || !data) {
+      //   toast.error("Email already exists");
+      //   setLoading(false);
+      //   return;
+      // }
       await signUp(form.email, form.password, {
         firstName: form.firstName,
         lastName: form.lastName,
