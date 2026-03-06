@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { User, Mail, Lock, AtSign, ArrowRight } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
-
+import { supabase } from "../lib/supabase";
 export default function Register() {
   const [form, setForm] = useState({
     firstName: "",
@@ -17,8 +17,7 @@ export default function Register() {
   });
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
-  const navigate = useNavigate();
-
+  const [email, setEmail] = useState('');
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -42,28 +41,68 @@ export default function Register() {
     if (form.password !== form.confirmPassword) return "Passwords do not match";
     return null;
   };
+  const [registered, setRegistered] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const error = validate();
     if (error) return toast.error(error);
     setLoading(true);
+
     try {
+
+      //validate if email already exists
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .single()
+      if (error || !data) {
+        toast.error("Email already exists");
+        setLoading(false);
+        return;
+      }
       await signUp(form.email, form.password, {
         firstName: form.firstName,
         lastName: form.lastName,
         nickname: form.nickname,
         username: form.username,
       });
-      toast.success("Account created!");
-      navigate("/dashboard");
+      setRegistered(true);
     } catch (err) {
       toast.error(err.message);
     } finally {
       setLoading(false);
     }
   };
-
+  if (registered) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-100 flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-white/40 w-full max-w-md p-10 text-center"
+        >
+          <div className="text-5xl mb-4">📬</div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">
+            Check your email!
+          </h2>
+          <p className="text-slate-500 text-sm mb-6">
+            We sent a confirmation link to{" "}
+            <span className="font-semibold text-emerald-600">{form.email}</span>.
+            Click it to activate your account.
+          </p>
+          <Link
+            to="/login"
+            className="inline-block bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-emerald-700 hover:to-teal-700 transition-all shadow-lg"
+          >
+            Go to Login
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-100 flex items-center justify-center p-6">
       <Toaster position="top-center" />
@@ -75,21 +114,21 @@ export default function Register() {
         className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-white/40 w-full max-w-2xl p-10"
       >
         <div className="flex justify-center mb-6">
-        <img
-          src="public/hlogo.png"
-          alt="Logo"
-          className="w-48 h-auto object-contain transition-transform duration-300 hover:scale-110 cursor-pointer"
-        />
-      </div>
+          <img
+            src="public/hlogo.png"
+            alt="Logo"
+            className="w-48 h-auto object-contain transition-transform duration-300 hover:scale-110 cursor-pointer"
+          />
+        </div>
 
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">
-          CREATE ACCOUNT
-        </h1>
-        <p className="text-slate-500 mt-1 text-sm">
-          Join BillSplitter and split bills with ease
-        </p>
-      </div>
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-slate-800">
+            CREATE ACCOUNT
+          </h1>
+          <p className="text-slate-500 mt-1 text-sm">
+            Join BillSplitter and split bills with ease
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -186,6 +225,7 @@ export default function Register() {
       </motion.div>
     </div>
   );
+
 }
 
 function InputField({ icon: Icon, ...props }) {

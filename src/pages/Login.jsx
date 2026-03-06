@@ -11,6 +11,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const { resetPassword } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,6 +27,20 @@ export default function Login() {
     }
   };
 
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!email) return toast.error("Please enter your email address");
+    setLoading(true);
+    try {
+      await resetPassword(email);
+      toast.success("Password reset link sent to your email");
+    } catch {
+      toast.error("Failed to send password reset link");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-100 flex items-center justify-center p-4">
       <Toaster position="top-center" />
@@ -36,22 +51,22 @@ export default function Login() {
         transition={{ duration: 0.8, ease: "easeInOut" }}
         className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-white/40 w-full max-w-md p-8"
       >
-    <div className="flex justify-center mb-6">
-  <img
-    src="public/hlogo.png"
-    alt="Logo"
-    className="w-48 h-auto object-contain transition-transform duration-300 hover:scale-110 cursor-pointer"
-  />
-</div>
+        <div className="flex justify-center mb-6">
+          <img
+            src="public/hlogo.png"
+            alt="Logo"
+            className="w-48 h-auto object-contain transition-transform duration-300 hover:scale-110 cursor-pointer"
+          />
+        </div>
 
-<div className="text-center mb-8">
-  <h1 className="text-2xl font-bold text-slate-800">
-    WELCOME BACK!
-  </h1>
-  <p className="text-slate-500 mt-1 text-sm">
-    Sign in to your Bill Split account
-  </p>
-</div>
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-slate-800">
+            WELCOME BACK!
+          </h1>
+          <p className="text-slate-500 mt-1 text-sm">
+            Sign in to your Bill Split account
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
@@ -76,6 +91,16 @@ export default function Login() {
             />
           </div>
 
+          <p className="text-start text-xs text-slate-500 mt-[-10px] ml-2">
+            {" "}
+            <Link
+              to="/forgot-password"
+              className="text-emerald-600 font-semibold hover:text-emerald-700 transition"
+            >
+              Forgot Password
+            </Link>
+          </p>
+
           <motion.button
             whileTap={{ scale: 0.97 }}
             type="submit"
@@ -92,6 +117,7 @@ export default function Login() {
           </motion.button>
         </form>
 
+
         <p className="text-center text-sm text-slate-500 mt-6">
           Don't have an account?{" "}
           <Link
@@ -101,6 +127,7 @@ export default function Login() {
             Register
           </Link>
         </p>
+
       </motion.div>
     </div>
   );
