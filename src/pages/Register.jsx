@@ -17,40 +17,92 @@ export default function Register() {
   });
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
-  const [email, setEmail] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formError, setFormError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
-  const validate = () => {
-    for (const value of Object.values(form)) {
-      if (!value || value.trim() === "")
-        return "All fields are required. Spaces are not valid input.";
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+  const getEmailError = (value) => {
+    if (!value || value.trim() === "") return "";
+    if (/\s/.test(value)) return "Email cannot contain spaces";
+    const atCount = (value.match(/@/g) || []).length;
+    if (atCount === 0) return 'Email must include "@"';
+    if (atCount > 1) return 'Email must contain only one "@"';
+    const [local, domain] = value.split("@");
+    if (!local) return "Email must include a username before @";
+    if (!domain) return "Email must include a domain after @";
+
+    if (!domain.includes(".")) return "Email domain must include a dot";
+    if (domain.startsWith(".") || domain.endsWith("."))
+      return "Email domain cannot start or end with a dot";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
       return "Please enter a valid email address";
-    if (form.password.length < 8 || form.password.length > 16)
-      return "Password must be 8-16 characters";
-    if (!/[A-Z]/.test(form.password))
-      return "Password needs at least one uppercase letter";
-    if (!/[a-z]/.test(form.password))
-      return "Password needs at least one lowercase letter";
-    if (!/[0-9]/.test(form.password))
-      return "Password needs at least one number";
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(form.password))
-      return "Password needs at least one special character";
-    if (form.password !== form.confirmPassword) return "Passwords do not match";
-    return null;
+    return "";
+  };
+
+  const getFieldError = (name, value, nextForm) => {
+    const trimmed = value?.trim?.() ?? value;
+    if (
+      ["firstName", "lastName", "nickname", "username"].includes(name) &&
+      (!trimmed || trimmed === "")
+    ) {
+      return "This field is required";
+    }
+    if (name === "email") {
+      return getEmailError(value);
+    }
+    if (name === "password") {
+      if (!trimmed) return "Password is required";
+      if (value.length < 8 || value.length > 16)
+        return "Password must be 8-16 characters";
+      if (!/[A-Z]/.test(value))
+        return "Password needs at least one uppercase letter";
+      if (!/[a-z]/.test(value))
+        return "Password needs at least one lowercase letter";
+      if (!/[0-9]/.test(value))
+        return "Password needs at least one number";
+      if (!/[!@#$%^&*(),.?\":{}|<>]/.test(value))
+        return "Password needs at least one special character";
+    }
+    if (name === "confirmPassword") {
+      if (!trimmed) return "Please confirm your password";
+      if (value !== nextForm.password) return "Passwords do not match";
+    }
+    return "";
+  };
+
+  const validateAll = (nextForm) => {
+    const errors = {};
+    Object.entries(nextForm).forEach(([name, value]) => {
+      const message = getFieldError(name, value, nextForm);
+      if (message) errors[name] = message;
+    });
+    return errors;
   };
   const [registered, setRegistered] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const error = validate();
-    if (error) return toast.error(error);
+    const allEmpty = Object.values(form).every(
+      (value) => !value || value.trim() === ""
+    );
+    if (allEmpty) {
+      setFormError("All fields are required");
+      setFieldErrors(validateAll(form));
+      return;
+    }
+
+    const errors = validateAll(form);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setEmailError(errors.email || "");
+      setFormError("");
+      return;
+    }
     setLoading(true);
 
     try {
-
       //validate if email already exists
       // const { data, error } = await supabase
       //   .from('profiles')
@@ -90,8 +142,8 @@ export default function Register() {
           </h2>
           <p className="text-slate-500 text-sm mb-6">
             We sent a confirmation link to{" "}
-            <span className="font-semibold text-emerald-600">{form.email}</span>.
-            Click it to activate your account.
+            <span className="font-semibold text-emerald-600">{form.email}</span>
+            . Click it to activate your account.
           </p>
           <Link
             to="/login"
@@ -122,15 +174,13 @@ export default function Register() {
         </div>
 
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-slate-800">
-            CREATE ACCOUNT
-          </h1>
+          <h1 className="text-2xl font-bold text-slate-800">CREATE ACCOUNT</h1>
           <p className="text-slate-500 mt-1 text-sm">
             Join BillSplitter and split bills with ease
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <InputField
               icon={User}
@@ -138,7 +188,19 @@ export default function Register() {
               placeholder="First Name"
               type="text"
               value={form.firstName}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                const nextValue = e.target.value;
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  firstName: getFieldError("firstName", nextValue, {
+                    ...form,
+                    firstName: nextValue,
+                  }),
+                }));
+                setFormError("");
+              }}
+              error={fieldErrors.firstName}
             />
             <InputField
               icon={User}
@@ -146,7 +208,19 @@ export default function Register() {
               placeholder="Last Name"
               type="text"
               value={form.lastName}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                const nextValue = e.target.value;
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  lastName: getFieldError("lastName", nextValue, {
+                    ...form,
+                    lastName: nextValue,
+                  }),
+                }));
+                setFormError("");
+              }}
+              error={fieldErrors.lastName}
             />
           </div>
 
@@ -157,7 +231,19 @@ export default function Register() {
               placeholder="Nickname"
               type="text"
               value={form.nickname}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                const nextValue = e.target.value;
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  nickname: getFieldError("nickname", nextValue, {
+                    ...form,
+                    nickname: nextValue,
+                  }),
+                }));
+                setFormError("");
+              }}
+              error={fieldErrors.nickname}
             />
             <InputField
               icon={AtSign}
@@ -165,7 +251,19 @@ export default function Register() {
               placeholder="Username"
               type="text"
               value={form.username}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                const nextValue = e.target.value;
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  username: getFieldError("username", nextValue, {
+                    ...form,
+                    username: nextValue,
+                  }),
+                }));
+                setFormError("");
+              }}
+              error={fieldErrors.username}
             />
           </div>
 
@@ -175,7 +273,15 @@ export default function Register() {
             placeholder="Email address"
             type="email"
             value={form.email}
-            onChange={handleChange}
+            onChange={(e) => {
+              handleChange(e);
+              const nextValue = e.target.value;
+              const nextError = getEmailError(nextValue);
+              setEmailError(nextError);
+              setFieldErrors((prev) => ({ ...prev, email: nextError }));
+              setFormError("");
+            }}
+            error={emailError || fieldErrors.email}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -185,7 +291,24 @@ export default function Register() {
               placeholder="Password"
               type="password"
               value={form.password}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                const nextValue = e.target.value;
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  password: getFieldError("password", nextValue, {
+                    ...form,
+                    password: nextValue,
+                  }),
+                  confirmPassword: getFieldError(
+                    "confirmPassword",
+                    form.confirmPassword,
+                    { ...form, password: nextValue }
+                  ),
+                }));
+                setFormError("");
+              }}
+              error={fieldErrors.password}
             />
             <InputField
               icon={Lock}
@@ -193,7 +316,20 @@ export default function Register() {
               placeholder="Confirm Password"
               type="password"
               value={form.confirmPassword}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                const nextValue = e.target.value;
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  confirmPassword: getFieldError(
+                    "confirmPassword",
+                    nextValue,
+                    { ...form, confirmPassword: nextValue }
+                  ),
+                }));
+                setFormError("");
+              }}
+              error={fieldErrors.confirmPassword}
             />
           </div>
 
@@ -223,19 +359,58 @@ export default function Register() {
           </Link>
         </p>
       </motion.div>
+
+      {formError ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setFormError("")}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2 }}
+            className="relative w-full max-w-sm rounded-3xl bg-white shadow-2xl border border-white/60 p-6 text-center"
+          >
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xl">
+              !
+            </div>
+            <h3 className="text-lg font-bold text-slate-800">Missing Details</h3>
+            <p className="text-sm text-slate-500 mt-2">{formError}</p>
+            <button
+              onClick={() => setFormError("")}
+              className="mt-5 w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-2.5 text-sm font-semibold hover:from-emerald-700 hover:to-teal-700 transition"
+            >
+              Okay
+            </button>
+          </motion.div>
+        </div>
+      ) : null}
     </div>
   );
-
 }
 
-function InputField({ icon: Icon, ...props }) {
+function InputField({ icon: Icon, error, ...props }) {
+  const isEmpty =
+    props.value === undefined ||
+    props.value === null ||
+    props.value.toString().trim() === "";
+
+  const inputClassName = [
+    "w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white/70",
+    "focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400",
+    "text-sm transition",
+    isEmpty ? "hover:border-red-400" : "hover:border-emerald-200",
+  ].join(" ");
+
   return (
     <div className="relative">
       <Icon className="absolute left-3 top-3.5 text-slate-400 w-4 h-4" />
       <input
         {...props}
-        className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white/70 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 text-sm transition"
+        className={inputClassName}
       />
+      {error ? <p className="mt-1 ml-1 text-xs text-red-500">{error}</p> : null}
     </div>
   );
 }

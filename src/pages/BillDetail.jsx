@@ -245,7 +245,7 @@ export default function BillDetail() {
 
             {/* Header */}
             <div className="bg-white/80 backdrop-blur-md border-b border-white/40 sticky top-0 z-10">
-                <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
                     <button
                         onClick={() => navigate('/dashboard')}
                         className="p-2 rounded-xl hover:bg-slate-100 transition text-slate-500"
@@ -257,6 +257,9 @@ export default function BillDetail() {
                         <p className="text-xs text-slate-400">
                             {members.length} member{members.length !== 1 ? 's' : ''}
                         </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                            Track who paid what and split fairly.
+                        </p>
                     </div>
                     <span className={`text-xs px-3 py-1 rounded-full font-medium ${bill.status === 'active'
                         ? 'bg-emerald-100 text-emerald-700'
@@ -267,40 +270,90 @@ export default function BillDetail() {
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+            <div className="relative max-w-6xl mx-auto px-6 py-10 space-y-8">
+                <div className="pointer-events-none absolute -top-10 -right-10 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-200/40 to-teal-200/40 blur-3xl" />
+                <div className="pointer-events-none absolute top-40 -left-10 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-100/50 to-slate-200/40 blur-3xl" />
 
-                {/* Invite Code Card */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
-                >
-                    <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                        <Receipt className="w-4 h-4 text-emerald-500" />
-                        Invite Code
-                    </h3>
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 bg-slate-50 rounded-2xl px-5 py-3 font-mono font-bold text-xl tracking-widest text-slate-800 text-center border border-slate-200">
-                            {bill.code}
+                {/* Top Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Invite Code Card */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="lg:col-span-2 bg-white/80 backdrop-blur-md rounded-3xl shadow-lg border border-white/60 p-6 hover:shadow-xl transition"
+                    >
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="font-bold text-slate-800 mb-1 flex items-center gap-2">
+                                    <Receipt className="w-4 h-4 text-emerald-500" />
+                                    Invite Code
+                                </h3>
+                                <p className="text-xs text-slate-400">
+                                    Share this code to invite people to this bill
+                                </p>
+                            </div>
+                            {isHost && (
+                                <button
+                                    onClick={() => setShowAddMember(true)}
+                                    className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-xs font-semibold hover:from-emerald-700 hover:to-teal-700 transition shadow-md"
+                                >
+                                    <UserPlus className="w-4 h-4" />
+                                    Add Member
+                                </button>
+                            )}
                         </div>
-                        <button
-                            onClick={copyCode}
-                            className="p-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition"
-                        >
-                            <Copy className="w-5 h-5" />
-                        </button>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-2 text-center">
-                        Share this code to invite people to this bill
-                    </p>
-                </motion.div>
+                        <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                            <div className="flex-1 bg-slate-50 rounded-2xl px-6 py-4 font-mono font-bold text-2xl tracking-[0.35em] text-slate-800 text-center border border-slate-200">
+                                {bill.code}
+                            </div>
+                            <button
+                                onClick={copyCode}
+                                className="p-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition shadow-sm"
+                            >
+                                <Copy className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </motion.div>
+
+                    {/* Quick Stats */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.05 }}
+                        className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-3xl shadow-xl p-6 text-white"
+                    >
+                        <p className="text-emerald-100 text-xs uppercase tracking-widest">
+                            Bill Overview
+                        </p>
+                        <h3 className="text-2xl font-bold mt-2">{bill.name}</h3>
+                        <div className="mt-5 grid grid-cols-2 gap-4">
+                            <div className="bg-white/15 rounded-2xl p-4">
+                                <p className="text-xs text-emerald-50">Members</p>
+                                <p className="text-2xl font-bold">{members.length}</p>
+                            </div>
+                            <div className="bg-white/15 rounded-2xl p-4">
+                                <p className="text-xs text-emerald-50">Status</p>
+                                <p className="text-lg font-semibold capitalize">{bill.status}</p>
+                            </div>
+                        </div>
+                        {isHost && (
+                            <button
+                                onClick={() => setShowAddMember(true)}
+                                className="mt-5 w-full flex items-center justify-center gap-2 rounded-2xl bg-white/20 hover:bg-white/30 text-white py-3 text-sm font-semibold transition"
+                            >
+                                <UserPlus className="w-4 h-4" />
+                                Invite a Member
+                            </button>
+                        )}
+                    </motion.div>
+                </div>
 
                 {/* Members Card */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
+                    className="bg-white/80 backdrop-blur-md rounded-3xl shadow-lg border border-white/60 p-6 hover:shadow-xl transition"
                 >
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -330,7 +383,7 @@ export default function BillDetail() {
                             return (
                                 <div
                                     key={member.id}
-                                    className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100"
+                                    className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center text-white font-bold text-sm">
@@ -370,13 +423,18 @@ export default function BillDetail() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
+                    className="bg-white/80 backdrop-blur-md rounded-3xl shadow-lg border border-white/60 p-6 hover:shadow-xl transition"
                 >
-                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <Receipt className="w-4 h-4 text-emerald-500" />
-                        Expenses
-                    </h3>
-                    <div className="text-center py-10">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                            <Receipt className="w-4 h-4 text-emerald-500" />
+                            Expenses
+                        </h3>
+                        <button className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition">
+                            + Add Expense
+                        </button>
+                    </div>
+                    <div className="text-center py-12 rounded-3xl border border-dashed border-emerald-200 bg-gradient-to-br from-emerald-50/70 to-teal-50/50">
                         <span className="text-4xl">📋</span>
                         <p className="text-slate-500 text-sm mt-3">
                             No details yet. Add an expense to get started.
