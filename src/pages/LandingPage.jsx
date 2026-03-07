@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { Activity, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import {
-    Receipt, Users, Wallet, Zap, Shield, Star,
-    ArrowRight, Check, ChevronDown, Menu, X
+    Receipt, Users, Wallet,
+    ArrowRight, ChevronDown, Menu, X,
+    ActivityIcon,
+    HandCoinsIcon
 } from "lucide-react";
 
-// ── Fade-in on scroll ──────────────────────────────────────────────
 function FadeIn({ children, delay = 0, className = "" }) {
     const ref = useRef(null);
     const inView = useInView(ref, { once: true, margin: "-80px" });
+
     return (
         <motion.div
             ref={ref}
@@ -23,7 +25,6 @@ function FadeIn({ children, delay = 0, className = "" }) {
     );
 }
 
-// ── Nav ────────────────────────────────────────────────────────────
 function Navbar() {
     const [open, setOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
@@ -35,191 +36,291 @@ function Navbar() {
     }, []);
 
     return (
-        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-white/90 backdrop-blur-md shadow-sm" : "bg-transparent"}`}>
-            <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-black/90 backdrop-blur-md border-b border-slate-800" : "bg-transparent"}`}>
+            <div className="max-w-6xl mx-auto px-0 py-10 flex items-center justify-between">
+
                 <img src="public/hlogo.png" alt="BillSplitter" className="h-10 w-auto" />
 
-                {/* Desktop nav */}
-                <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-                    <a href="#features" className="hover:text-emerald-600 transition">Features</a>
-                    <a href="#pricing" className="hover:text-emerald-600 transition">Pricing</a>
-                    <a href="#faq" className="hover:text-emerald-600 transition">FAQ</a>
-
+                <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+                    <a href="#about" className="hover:text-emerald-400">About</a>
+                    <a href="#how" className="hover:text-emerald-400">How It Works</a>
+                    <a href="#features" className="hover:text-emerald-400">Features</a>
                 </nav>
 
                 <div className="hidden md:flex items-center gap-3">
-                    <Link to="/login" className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition px-4 py-2">
+                    <Link to="/login" className="text-sm font-semibold text-slate-300 hover:text-emerald-400 px-4 py-2">
                         Sign In
                     </Link>
-                    <Link to="/register" className="text-sm font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-5 py-2.5 rounded-xl hover:from-emerald-700 hover:to-teal-700 transition shadow-md shadow-emerald-200">
+
+                    <Link
+                        to="/register"
+                        className="text-sm font-semibold bg-emerald-500 text-black px-5 py-2.5 rounded-full hover:bg-emerald-400"
+                    >
                         Get Started Free
                     </Link>
-
                 </div>
 
-                {/* Mobile menu toggle */}
-                <button onClick={() => setOpen(!open)} className="md:hidden text-slate-600">
+                <button onClick={() => setOpen(!open)} className="md:hidden text-slate-300">
                     {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </button>
             </div>
-
-            {/* Mobile menu */}
-            {open && (
-                <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="md:hidden bg-white border-t border-slate-100 px-6 py-4 space-y-3"
-                >
-                    <a href="#features" onClick={() => setOpen(false)} className="block text-sm font-medium text-slate-600 py-2">Features</a>
-                    <a href="#pricing" onClick={() => setOpen(false)} className="block text-sm font-medium text-slate-600 py-2">Pricing</a>
-                    <a href="#faq" onClick={() => setOpen(false)} className="block text-sm font-medium text-slate-600 py-2">FAQ</a>
-                    <Link to="/login" className="block text-sm font-semibold text-slate-600 py-2">Sign In</Link>
-                    <Link to="/register" className="block text-sm font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-5 py-3 rounded-xl text-center">
-                        Get Started Free
-                    </Link>
-                </motion.div>
-            )}
         </header>
     );
 }
 
-// ── Hero ───────────────────────────────────────────────────────────
 function Hero() {
     return (
-        <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-100 pt-20">
-            {/* Background blobs */}
-            <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200/40 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-20 right-10 w-96 h-96 bg-teal-200/30 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-100/20 rounded-full blur-3xl pointer-events-none" />
+        <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-black via-slate-900 to-black pt-20 text-white">
+
+            <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl" />
+            <div className="absolute bottom-20 right-10 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl" />
 
             <div className="relative max-w-5xl mx-auto px-6 text-center">
-                <motion.div
-                    initial={{ opacity: 0, y: -16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-emerald-200 text-emerald-700 text-xs font-semibold px-4 py-2 rounded-full mb-8 shadow-sm"
-                >
-                    <Zap className="w-3.5 h-3.5" />
-                    No more awkward money conversations
-                </motion.div>
 
                 <motion.h1
                     initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.1 }}
-                    className="text-5xl md:text-7xl font-extrabold text-slate-900 leading-tight tracking-tight mb-6"
+                    className="text-5xl md:text-7xl font-extrabold mb-6"
                 >
-                    Split bills.{" "}
-                    <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-                        Not friendships.
-                    </span>
+                    Split expenses.
+                    <span className="text-emerald-400"> Stay organized.</span>
                 </motion.h1>
 
-                <motion.p
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                    className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed"
-                >
-                    The easiest way to track shared expenses with friends, family, or teammates.
-                    Create a bill, invite people, and let us handle the math.
-                </motion.p>
+                <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10">
+                    Easily manage shared bills with friends, roommates, or teammates.
+                </p>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                    className="flex flex-col sm:flex-row items-center justify-center gap-4"
-                >
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+
                     <Link
                         to="/register"
-                        className="group flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:from-emerald-700 hover:to-teal-700 transition-all shadow-xl shadow-emerald-200 hover:shadow-emerald-300 hover:scale-105"
+                        className="group flex items-center gap-2 bg-emerald-500 text-black px-8 py-4 rounded-full font-bold hover:bg-emerald-400"
                     >
                         Start for Free
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        <ArrowRight className="w-4 h-4" />
                     </Link>
+
                     <Link
                         to="/login"
-                        className="flex items-center gap-2 bg-white/80 backdrop-blur border border-slate-200 text-slate-700 px-8 py-4 rounded-2xl font-bold text-base hover:bg-white transition-all shadow-md hover:scale-105"
+                        className="bg-slate-900 border border-slate-700 text-white px-8 py-4 rounded-full font-bold"
                     >
                         Sign In
                     </Link>
-                    <Link to='/join' className="flex items-center gap-2 bg-white/80 backdrop-blur border border-slate-200 text-slate-700 px-8 py-4 rounded-2xl font-bold text-base hover:bg-white transition-all shadow-md hover:scale-105">
+
+                    <Link
+                        to="/join"
+                        className="bg-slate-900 border border-slate-700 text-white px-8 py-4 rounded-full font-bold"
+                    >
                         Join a Bill
                     </Link>
-                </motion.div>
 
-                <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                    className="text-xs text-slate-400 mt-6"
-                >
-                    Free forever · No credit card required · Setup in 2 minutes
-                </motion.p>
+                </div>
 
-                {/* Scroll indicator */}
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1 }}
-                    className="absolute bottom-8 left-1/2 -translate-x-1/2"
+                    className="absolute bottom-[-100px] left-1/2 -translate-x-1/2 cursor-pointer"
+                    onClick={() => {
+                        const section = document.getElementById("about");
+                        if (section) section.scrollIntoView({ behavior: "smooth" });
+                    }}
                 >
-                    <motion.div
-                        animate={{ y: [0, 8, 0] }}
-                        transition={{ repeat: Infinity, duration: 1.5 }}
-                    >
-                        <ChevronDown className="w-6 h-6 text-slate-400" />
-                    </motion.div>
+                    <ChevronDown className="w-6 h-6 text-slate-500 hover:text-emerald-400" />
                 </motion.div>
+
             </div>
         </section>
     );
 }
 
-// ── Features ───────────────────────────────────────────────────────
-
-// ── Pricing ────────────────────────────────────────────────────────
-
-
-// ── FAQ ────────────────────────────────────────────────────────────
-
-
-// ── CTA Banner ─────────────────────────────────────────────────────
-
-// ── Footer ─────────────────────────────────────────────────────────
-function Footer() {
+function About() {
     return (
-        <footer className="bg-slate-900 text-slate-400 py-12">
-            <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-3">
-                    <img src="public/hlogo.png" alt="BillSplitter" className="h-8 w-auto brightness-0 invert opacity-80" />
+        <section id="about" className="bg-black text-white py-24">
+
+            <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
+
+                <FadeIn>
+                    <h2 className="text-4xl font-bold mb-6">
+                        What is Bill Splitting?
+                    </h2>
+
+                    <p className="text-slate-400 text-lg leading-relaxed mb-6">
+                        Bill splitting is the process of dividing shared expenses among multiple people.
+                        It commonly happens when friends share meals, roommates share utilities,
+                        or teams manage group expenses.
+                    </p>
+
+                    <p className="text-slate-400 text-lg leading-relaxed">
+                        Splitify simplifies this process by automatically calculating who owes what,
+                        allowing groups to manage expenses transparently and efficiently.
+                    </p>
+                </FadeIn>
+
+                <FadeIn delay={0.2}>
+                    <div className="bg-slate-900 p-10 rounded-2xl border border-slate-800">
+                        <p className="text-slate-400">
+                            Instead of manually computing expenses or sending multiple messages,
+                            Splitify organizes everything into a single shared bill system.
+                        </p>
+                    </div>
+                </FadeIn>
+
+            </div>
+        </section>
+    );
+}
+
+function HowItWorks() {
+
+    const steps = [
+        {
+            icon: <Receipt className="w-8 h-8 text-emerald-400" />,
+            title: "Create a Bill",
+            desc: "Add the expense and define the total amount."
+        },
+        {
+            icon: <Users className="w-8 h-8 text-emerald-400" />,
+            title: "Invite Participants",
+            desc: "Add friends or teammates to share the bill."
+        },
+        {
+            icon: <Wallet className="w-8 h-8 text-emerald-400" />,
+            title: "Track Balances",
+            desc: "Instantly see who owes what and settle payments."
+        }
+    ];
+
+    return (
+        <section id="how" className="bg-slate-950 text-white py-24">
+
+            <div className="max-w-6xl mx-auto px-6">
+
+                <FadeIn className="text-center mb-16">
+                    <h2 className="text-4xl font-bold">
+                        How Splitify Works
+                    </h2>
+                </FadeIn>
+
+                <div className="grid md:grid-cols-3 gap-10">
+
+                    {steps.map((step, i) => (
+
+                        <FadeIn key={i} delay={i * 0.2}>
+
+                            <div className="bg-black border border-slate-800 p-8 rounded-2xl">
+
+                                <div className="mb-4">
+                                    {step.icon}
+                                </div>
+
+                                <h3 className="text-xl font-semibold mb-2">
+                                    {step.title}
+                                </h3>
+
+                                <p className="text-slate-400">
+                                    {step.desc}
+                                </p>
+
+                            </div>
+
+                        </FadeIn>
+
+                    ))}
+
                 </div>
 
+            </div>
+
+        </section>
+    );
+}
+
+function Features() {
+
+    const features = [
+        { icon: <HandCoinsIcon className="w-8 h-8 text-emerald-400" />, text: "Automatic expense calculation" },
+        { icon: <Wallet className="w-8 h-8 text-emerald-400" />, text: "Real-time balance tracking" },
+        { icon: <Users className="w-8 h-8 text-emerald-400" />, text: "Simple group expense management" },
+        { icon: <ActivityIcon className="w-8 h-8 text-emerald-400" />, text: "Clear payment summaries" }
+    ];
+
+    return (
+        <section id="features" className="bg-black text-white py-24">
+
+            <div className="max-w-6xl mx-auto px-6">
+
+                <FadeIn className="text-center mb-16">
+                    <h2 className="text-4xl font-bold">
+                        Key Features
+                    </h2>
+                </FadeIn>
+
+                <div className="grid md:grid-cols-2 gap-8">
+
+                    {features.map((feature, i) => (
+
+                        <FadeIn key={i} delay={i * 0.15}>
+
+                            <div className="flex items-center gap-4 bg-slate-900 p-6 rounded-xl border border-slate-800">
+
+                                <div className="bg-emerald-500/10 p-3 rounded-lg">
+                                    {feature.icon}
+                                </div>
+
+                                <p className="text-slate-300">
+                                    {feature.text}
+                                </p>
+
+                            </div>
+
+                        </FadeIn>
+
+                    ))}
+
+                </div>
+
+            </div>
+
+        </section>
+    );
+}
+
+function Footer() {
+    return (
+        <footer className="bg-black border-t border-slate-800 text-slate-400 py-12">
+
+            <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+
+                <img src="public/hlogo.png" alt="BillSplitter" className="h-8 w-auto" />
+
                 <nav className="flex items-center gap-6 text-sm">
-                    <a href="#features" className="hover:text-white transition">Features</a>
-                    <a href="#pricing" className="hover:text-white transition">Pricing</a>
-                    <a href="#faq" className="hover:text-white transition">FAQ</a>
-                    <Link to="/login" className="hover:text-white transition">Sign In</Link>
-                    <Link to="/register" className="hover:text-white transition">Register</Link>
+
+                    <a href="#about" className="hover:text-white">About</a>
+                    <a href="#how" className="hover:text-white">How it Works</a>
+                    <a href="#features" className="hover:text-white">Features</a>
+
                 </nav>
 
                 <p className="text-xs text-slate-600">
                     © {new Date().getFullYear()} BillSplitter. All rights reserved.
                 </p>
+
             </div>
+
         </footer>
     );
 }
 
-// ── Main Export ────────────────────────────────────────────────────
 export default function LandingPage() {
+
     return (
-        <div className="font-sans antialiased">
+        <div className="font-sans antialiased bg-black text-white">
+
             <Navbar />
             <Hero />
-
+            <About />
+            <HowItWorks />
+            <Features />
             <Footer />
+
         </div>
     );
 }
