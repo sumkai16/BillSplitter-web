@@ -41,11 +41,11 @@ export default function JoinBill() {
                 return;
             }
 
-            if (data.status !== 'active') {
-                toast.error('This bill is no longer active');
-                setLoading(false);
-                return;
-            }
+            // if (data.status !== 'active') {
+            //     toast.error('This bill is no longer active');
+            //     setLoading(false);
+            //     return;
+            // }
 
             setBill(data);
 
