@@ -8,6 +8,7 @@ import ResetPassword from './pages/ResetPassword'
 import LandingPage from './pages/LandingPage'
 import BillDetail from './pages/BillDetail'
 import JoinBill from './pages/JoinBill'
+import UserProfile from './pages/UserProfile'
 
 
 function ProtectedRoute({ children }) {
@@ -32,6 +33,7 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/bills/:id" element={<BillDetail />} />
       <Route path="/join" element={<JoinBill />} />
+      <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
 
     </Routes>
   )
