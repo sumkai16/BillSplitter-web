@@ -33,6 +33,7 @@ export default function App() {
       <Route path="/bills/:id" element={<BillDetail />} />
       <Route path="/join" element={<JoinBill />} />
       <Route path="/archive" element={<ProtectedRoute><Archive /></ProtectedRoute>} />
+
     </Routes>
   )
 }

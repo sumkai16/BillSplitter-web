@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { motion } from "framer-motion";
@@ -68,6 +68,9 @@ export default function Dashboard() {
   const [billCode, setBillCode] = useState(generateCode());
   const [billLoading, setBillLoading] = useState(false);
   const [bills, setBills] = useState([]);
+  const [billSearch, setBillSearch] = useState("");
+  const [billStatus, setBillStatus] = useState("all");
+  const [billSort, setBillSort] = useState("newest");
   const handleCreateBill = async () => {
     if (!billName.trim()) return toast.error("Bill name is required");
     setBillLoading(true);
@@ -105,6 +108,25 @@ export default function Dashboard() {
       setBillLoading(false);
     }
   };
+
+  const filteredBills = useMemo(() => {
+    const search = billSearch.trim().toLowerCase();
+    return bills
+      .filter((bill) => {
+        const matchesName = search
+          ? bill.name?.toLowerCase().includes(search)
+          : true;
+        const matchesStatus =
+          billStatus === "all" ? true : bill.status === billStatus;
+        return matchesName && matchesStatus;
+      })
+      .sort((a, b) => {
+        if (billSort === "newest") {
+          return new Date(b.created_at) - new Date(a.created_at);
+        }
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+  }, [bills, billSearch, billSort, billStatus]);
   if (!user) return null;
 
   const handleArchiveBill = async (e, billId) => {
@@ -200,6 +222,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
+              onClick={() => navigate("/profile")}
               className="transition-all duration-300 hover:scale-[1.02] bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6"
             >
               <h3 className="font-bold text-white mb-4 flex items-center gap-2">
@@ -254,10 +277,10 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="cursor-pointer bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6 transition-all duration-300 hover:scale-[1.02] hover:border-emerald-500/40"
+              className="bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-white flex items-center gap-2">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2">
                   <Receipt className="w-4 h-4 text-emerald-500" />
                   My Bills
                 </h3>
@@ -278,16 +301,46 @@ export default function Dashboard() {
 
               </div>
 
-              {bills.length === 0 ? (
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-5">
+                <input
+                  type="text"
+                  placeholder="Search by bill name"
+                  value={billSearch}
+                  onChange={(e) => setBillSearch(e.target.value)}
+                  className="w-full md:max-w-xs px-4 py-2.5 rounded-xl border border-slate-200 bg-white/70 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm transition"
+                />
+                <div className="flex flex-wrap gap-3">
+                  <select
+                    value={billStatus}
+                    onChange={(e) => setBillStatus(e.target.value)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white/70 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="closed">Closed</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                  <select
+                    value={billSort}
+                    onChange={(e) => setBillSort(e.target.value)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white/70 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition"
+                  >
+                    <option value="newest">Newest to Oldest</option>
+                    <option value="oldest">Oldest to Newest</option>
+                  </select>
+                </div>
+              </div>
+
+              {filteredBills.length === 0 ? (
                 <div className="text-center py-10">
                   <span className="text-4xl">🧾</span>
-                  <p className="text-slate-400 text-sm mt-3">
+                  <p className="text-slate-500 text-sm mt-3">
                     No bills yet. Create one to get started!
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {bills.map((bill) => (
+                  {filteredBills.map((bill) => (
                     <div
                       key={bill.id}
                       onClick={() => navigate(`/bills/${bill.id}`)}
