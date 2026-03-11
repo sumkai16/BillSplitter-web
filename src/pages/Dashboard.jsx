@@ -47,6 +47,7 @@ export default function Dashboard() {
         .from("bills")
         .select("*")
         .eq("host_id", user.id)
+        .eq('status', 'active')
         .order("created_at", { ascending: false });
 
       if (!error) setBills(data);
@@ -77,7 +78,7 @@ export default function Dashboard() {
           name: billName.trim(),
           code: billCode,
           host_id: profile.id,
-          status: "Active",
+          status: "active",
         })
         .select()
         .single();
@@ -105,8 +106,24 @@ export default function Dashboard() {
     }
   };
   if (!user) return null;
+
+  const handleArchiveBill = async (e, billId) => {
+    e.stopPropogation();
+    try {
+      const { error } = await supabase
+        .from("bills")
+        .update({ status: "Archived" })
+        .eq("id", billId);
+      if (error) throw error;
+      toast.success("Bill archived successfully");
+      setBills(prev => prev.filter(b => b.id !== billId));
+    } catch (error) {
+      toast.error("Failed to archive bill");
+    }
+  }
+
   return (
-   <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-black text-white">
+    <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-black text-white">
       <Toaster position="top-center" />
 
       <div className="flex justify-between items-center px-8 py-5">
@@ -204,13 +221,13 @@ export default function Dashboard() {
                     label: "Member Since",
                     value: profile?.created_at
                       ? new Date(profile.created_at).toLocaleDateString(
-                          "en-US",
-                          {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          },
-                        )
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        },
+                      )
                       : "",
                   },
                 ].map(({ icon: Icon, label, value }) => (
@@ -225,7 +242,7 @@ export default function Dashboard() {
                     <span className="text-white text-sm font-medium">
                       {value
                         ? value.charAt(0).toUpperCase() +
-                          value.slice(1).toLowerCase()
+                        value.slice(1).toLowerCase()
                         : "—"}
                     </span>
                   </div>
@@ -244,12 +261,21 @@ export default function Dashboard() {
                   <Receipt className="w-4 h-4 text-emerald-500" />
                   My Bills
                 </h3>
-                <button
-                  onClick={() => setShowCreateBill(true)}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl text-sm font-semibold transition"
-                >
-                  + New Bill
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate('/archive')}
+                    className="px-4 py-2 border border-slate-700 hover:border-emerald-500/40 text-slate-400 hover:text-emerald-400 rounded-xl text-sm font-semibold transition"
+                  >
+                    📦 Archive
+                  </button>
+                  <button
+                    onClick={() => setShowCreateBill(true)}
+                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl text-sm font-semibold transition"
+                  >
+                    + New Bill
+                  </button>
+                </div>
+
               </div>
 
               {bills.length === 0 ? (
@@ -266,7 +292,7 @@ export default function Dashboard() {
                       key={bill.id}
                       onClick={() => navigate(`/bills/${bill.id}`)}
                       className="flex items-center justify-between p-4 rounded-2xl border border-slate-800 hover:border-emerald-500/40 hover:bg-slate-800 transition-all cursor-pointer">
-                    
+
                       <div>
                         <p className="font-semibold text-white text-sm">
                           {bill.name}
@@ -280,11 +306,10 @@ export default function Dashboard() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span
-                          className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            bill.status === "Active"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-gray-100 text-gray-500"
-                          }`}
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${bill.status === "Active"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-gray-100 text-gray-500"
+                            }`}
                         >
                           {bill.status}
                         </span>
@@ -312,18 +337,32 @@ export default function Dashboard() {
 
             <div className="space-y-4">
               {/* Bill Name */}
-              <div>
-                <label className="text-sm font-medium text-slate-400 mb-1 block">
-                  Bill Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Dinner at Jollibee"
-                  value={billName}
-                  onChange={(e) => setBillName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-black bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm transition"
-                />
-              </div>
+              {bills.map((bill) => (
+                <div
+                  key={bill.id}
+                  onClick={() => navigate(`/bills/${bill.id}`)}
+                  className="flex items-center justify-between p-4 rounded-2xl border border-slate-800 hover:border-emerald-500/40 hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  <div>
+                    <p className="font-semibold text-white text-sm">{bill.name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Code: <span className="font-mono font-bold tracking-wider">{bill.code}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-emerald-900/40 text-emerald-400">
+                      {bill.status}
+                    </span>
+                    <button
+                      onClick={(e) => handleArchiveBill(e, bill.id)}
+                      className="p-2 rounded-xl hover:bg-slate-700 text-slate-400 hover:text-amber-400 transition text-xs"
+                      title="Archive bill"
+                    >
+                      📦
+                    </button>
+                  </div>
+                </div>
+              ))}
 
               {/* Invite Code */}
               <div>
