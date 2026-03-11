@@ -9,6 +9,7 @@ import LandingPage from './pages/LandingPage'
 import BillDetail from './pages/BillDetail'
 import JoinBill from './pages/JoinBill'
 import Archive from './pages/Archive'
+import UserProfile from './pages/UserProfile'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -33,7 +34,7 @@ export default function App() {
       <Route path="/bills/:id" element={<BillDetail />} />
       <Route path="/join" element={<JoinBill />} />
       <Route path="/archive" element={<ProtectedRoute><Archive /></ProtectedRoute>} />
-
+      <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
     </Routes>
   )
 }

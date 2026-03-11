@@ -15,9 +15,9 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
 const accountBadge = {
-  guest: { label: "Guest", color: "bg-gray-100 text-gray-600" },
-  standard: { label: "Standard", color: "bg-emerald-100 text-emerald-700" },
-  premium: { label: "Premium", color: "bg-amber-100 text-amber-700" },
+  guest: { label: "Guest", color: "bg-gray-800 text-gray-400" },
+  standard: { label: "Standard", color: "bg-emerald-900/40 text-emerald-400" },
+  premium: { label: "Premium ⭐", color: "bg-amber-900/40 text-amber-400" },
 };
 
 const emptyForm = {
@@ -147,29 +147,33 @@ export default function UserProfile() {
       setSaving(false);
     }
   };
-
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-black text-white">
       <Toaster position="top-center" />
 
-      <div className="flex items-center justify-between px-8 py-5">
-        <div className="flex items-center gap-4">
+      {/* Header */}
+      <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <button
             onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-2 text-slate-600 hover:text-emerald-600 transition text-sm font-semibold"
+            className="flex items-center gap-2 text-slate-400 hover:text-emerald-400 transition text-sm font-semibold"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </button>
+          <img
+            src="public/hlogo.png"
+            alt="Logo"
+            className="w-36 h-auto object-contain cursor-pointer"
+            onClick={() => navigate("/dashboard")}
+          />
         </div>
-        <img
-          src="public/hlogo.png"
-          alt="Logo"
-          className="w-44 h-auto object-contain transition-transform duration-300 hover:scale-110 cursor-pointer"
-          onClick={() => navigate("/dashboard")}
-        />
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
@@ -179,6 +183,7 @@ export default function UserProfile() {
           </div>
         ) : (
           <>
+            {/* Profile Banner */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -186,9 +191,7 @@ export default function UserProfile() {
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-emerald-100 text-sm mb-1">
-                    Personal Profile
-                  </p>
+                  <p className="text-emerald-100 text-sm mb-1">Personal Profile</p>
                   <h2 className="text-2xl font-bold">
                     {profile?.first_name} {profile?.last_name}
                   </h2>
@@ -196,23 +199,22 @@ export default function UserProfile() {
                     @{profile?.username}
                   </p>
                 </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold ${badge.color}`}
-                >
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${badge.color}`}>
                   {badge.label}
                 </span>
               </div>
             </motion.div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Edit Form */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 }}
-                className="lg:col-span-2 bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
+                className="lg:col-span-2 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6"
               >
-                <h3 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
-                  <User className="w-4 h-4 text-emerald-500" />
+                <h3 className="font-bold text-white mb-5 flex items-center gap-2">
+                  <User className="w-4 h-4 text-emerald-400" />
                   Personal Information
                 </h3>
 
@@ -256,7 +258,7 @@ export default function UserProfile() {
                   <button
                     onClick={handleReset}
                     disabled={!isDirty || saving}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition text-sm disabled:opacity-60"
+                    className="px-4 py-2 rounded-xl border border-slate-700 text-slate-400 font-semibold hover:bg-slate-800 transition text-sm disabled:opacity-40"
                   >
                     Reset
                   </button>
@@ -264,22 +266,31 @@ export default function UserProfile() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleSave}
                     disabled={!isDirty || saving}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold hover:from-emerald-700 hover:to-teal-700 transition text-sm shadow-md disabled:opacity-60 flex items-center gap-2"
+                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition text-sm disabled:opacity-40 flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
                     {saving ? "Saving..." : "Save Changes"}
                   </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleLogout}
+                    className=" px-4 py-2 rounded-xl border border-slate-700 text-slate-400 font-semibold hover:bg-slate-800 transition text-sm"
+                  >
+                    Logout
+                  </motion.button>
+
                 </div>
               </motion.div>
 
+              {/* Account Summary */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6 space-y-4"
+                className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6 space-y-4"
               >
-                <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                  <BadgeCheck className="w-4 h-4 text-emerald-500" />
+                <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+                  <BadgeCheck className="w-4 h-4 text-emerald-400" />
                   Account Summary
                 </h3>
 
@@ -287,23 +298,18 @@ export default function UserProfile() {
                   label="Account Type"
                   value={profile?.account_type}
                   formatValue={(value) =>
-                    value
-                      ? value.charAt(0).toUpperCase() + value.slice(1)
-                      : "-"
+                    value ? value.charAt(0).toUpperCase() + value.slice(1) : "-"
                   }
                 />
                 <SummaryRow
                   label="Member Since"
                   value={
                     profile?.created_at
-                      ? new Date(profile.created_at).toLocaleDateString(
-                          "en-US",
-                          {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          },
-                        )
+                      ? new Date(profile.created_at).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
                       : "-"
                   }
                   icon={Calendar}
@@ -313,10 +319,13 @@ export default function UserProfile() {
                   value={profile?.id ? profile.id.slice(0, 8) : "-"}
                 />
               </motion.div>
+
             </div>
           </>
         )}
+
       </div>
+
     </div>
   );
 }
@@ -331,17 +340,17 @@ function ProfileField({
   className = "",
 }) {
   return (
-    <label className={`space-y-1 text-sm text-slate-600 ${className}`}>
+    <label className={`space-y-1 text-sm text-slate-400 ${className}`}>
       <span className="flex items-center gap-2 font-medium">
-        {Icon ? <Icon className="w-4 h-4 text-emerald-500" /> : null}
+        {Icon ? <Icon className="w-4 h-4 text-emerald-400" /> : null}
         {label}
-        {required ? <span className="text-emerald-500">*</span> : null}
+        {required ? <span className="text-emerald-400">*</span> : null}
       </span>
       <input
         type={type}
         value={value}
         onChange={onChange}
-        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/70 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm transition"
+        className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition"
       />
     </label>
   );
@@ -351,14 +360,12 @@ function SummaryRow({ label, value, icon: Icon, formatValue }) {
   const displayValue =
     typeof formatValue === "function" ? formatValue(value) : value;
   return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-      <div className="flex items-center gap-2 text-slate-500 text-sm">
+    <div className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0">
+      <div className="flex items-center gap-2 text-slate-400 text-sm">
         {Icon ? <Icon className="w-4 h-4" /> : null}
         {label}
       </div>
-      <span className="text-slate-800 text-sm font-medium">
-        {displayValue || "-"}
-      </span>
+      <span className="text-white text-sm font-medium">{displayValue || "-"}</span>
     </div>
   );
 }
