@@ -43,9 +43,17 @@ export function AuthProvider({ children }) {
     }
 
     const signIn = async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-    }
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        // Block login if email not confirmed
+        if (!data.user.email_confirmed_at) {
+            await supabase.auth.signOut();
+            throw new Error('Please confirm your email before logging in. Check your inbox.');
+        }
+
+        return data;
+    };
 
     const signOut = async () => {
         const { error } = await supabase.auth.signOut()
