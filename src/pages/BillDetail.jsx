@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     ArrowLeft, Users, Receipt, Copy, UserPlus,
-    X, Search, Check, UserCircle
+    X, Search, Check, UserCircle, Archive,
+    ChevronRight, Plus, CreditCard, Pencil
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -14,8 +15,10 @@ export default function BillDetail() {
     const { user } = useAuth();
     const navigate = useNavigate();
 
+    //  Bill & member 
     const [bill, setBill] = useState(null);
     const [members, setMembers] = useState([]);
+    const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isHost, setIsHost] = useState(false);
 
@@ -26,6 +29,7 @@ export default function BillDetail() {
     const [searchResults, setSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
     const [addingMember, setAddingMember] = useState(false);
+    const [guestForm, setGuestForm] = useState(GUEST_FORM_DEFAULT);
 
     // Guest form state
     const [guestForm, setGuestForm] = useState({
@@ -53,16 +57,28 @@ export default function BillDetail() {
     const fetchBillData = async () => {
         // Fetch bill
         const { data: billData, error: billError } = await supabase
-            .from('bills')
-            .select('*')
-            .eq('id', id)
-            .single();
+            .from('bills').select('*').eq('id', id).single();
 
         if (billError) {
             toast.error('Bill not found');
             navigate('/dashboard');
             return;
         }
+
+        const { data: memberData, error: memberError } = await supabase
+            .from('bill_members')
+            .select(`id, role, member_type, user_id, guest_id,
+                profiles:user_id (first_name, last_name, email, username),
+                guests:guest_id (first_name, last_name, email)`)
+            .eq('bill_id', id);
+
+        if (memberError) console.error('[fetchBillData] member error:', memberError);
+
+        const { data: expenseData, error: expenseError } = await supabase
+            .from('expenses').select('*').eq('bill_id', id)
+            .order('created_at', { ascending: false });
+
+        if (expenseError) console.error('[fetchBillData] expense error:', expenseError);
 
         setBill(billData);
         setIsHost(billData.host_id === user?.id);
@@ -90,12 +106,254 @@ export default function BillDetail() {
             .eq('bill_id', id);
 
         setMembers(memberData || []);
+        setExpenses(expenseData || []);
         setLoading(false);
     };
 
     useEffect(() => {
+        if (memberType !== 'registered' || searchQuery.trim().length < 2) {
+            setSearchResults([]);
+            return;
+        }
+        const timeout = setTimeout(async () => {
+            setSearching(true);
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, first_name, last_name, email, username')
+                .ilike('username', `%${searchQuery}%`)
+                .neq('id', user.id)
+                .limit(5);
+
+            if (error) console.error('[memberSearch] error:', error);
+
+            const existingIds = members
+                .filter(m => m.member_type === 'registered')
+                .map(m => m.user_id);
+            setSearchResults((data || []).filter(u => !existingIds.includes(u.id)));
+            setSearching(false);
+        }, 400);
+        return () => clearTimeout(timeout);
+    }, [searchQuery, memberType, members, user]);
+
+    //  Derived values 
+
+    const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
+    const getMemberName = (member) => {
+        if (!member) return 'Unknown';
+        return member.member_type === 'guest'
+            ? `${member.guests?.first_name} ${member.guests?.last_name}`
+            : `${member.profiles?.first_name} ${member.profiles?.last_name}`;
+    };
+
+    const getPayerName = (paidById) => {
+        const member = members.find(m => m.user_id === paidById || m.guest_id === paidById);
+        return getMemberName(member);
+    };
+
+    //  Handlers 
+
+    const handleAddRegistered = async (profile) => {
+        setAddingMember(true);
+        const { error } = await supabase.from('bill_members').insert({
+            bill_id: id, user_id: profile.id, role: 'member', member_type: 'registered',
+        });
+        if (error) {
+            console.error('[handleAddRegistered]', error);
+            toast.error(error.message);
+        } else {
+            toast.success(`${profile.first_name} added`);
+            setSearchQuery('');
+            setSearchResults([]);
+            fetchBillData();
+        }
+        setAddingMember(false);
+    };
+
+    const handleAddGuest = async () => {
+        const { firstName, lastName, email } = guestForm;
+        if (!firstName.trim() || !lastName.trim() || !email.trim())
+            return toast.error('All fields are required');
+        if (!EMAIL_REGEX.test(email))
+            return toast.error('Invalid email');
+
+        setAddingMember(true);
+        try {
+            const { data: existingGuest } = await supabase
+                .from('guests').select('id').eq('email', email.trim()).maybeSingle();
+
+            let guestId = existingGuest?.id;
+
+            if (!guestId) {
+                const { data: newGuest, error: guestError } = await supabase
+                    .from('guests').insert({
+                        first_name: firstName.trim(),
+                        last_name: lastName.trim(),
+                        email: email.trim(),
+                        invited_by: user.id,
+                    }).select().single();
+                if (guestError) throw guestError;
+                guestId = newGuest.id;
+            }
+
+            const { error: memberError } = await supabase.from('bill_members').insert({
+                bill_id: id, guest_id: guestId, role: 'member', member_type: 'guest',
+            });
+            if (memberError) throw memberError;
+
+            toast.success('Guest added');
+            setGuestForm(GUEST_FORM_DEFAULT);
+            setShowAddMember(false);
+            fetchBillData();
+        } catch (err) {
+            console.error('[handleAddGuest]', err);
+            toast.error(err.message);
+        } finally {
+            setAddingMember(false);
+        }
+    };
+
+    const handleRemoveMember = async (memberId) => {
+        const { error } = await supabase.from('bill_members').delete().eq('id', memberId);
+        if (error) {
+            console.error('[handleRemoveMember]', error);
+            return toast.error('Failed to remove');
+        }
+        toast.success('Member removed');
         fetchBillData();
-    }, [id]);
+    };
+
+    const handleArchiveBill = async () => {
+        if (!window.confirm('Mark this bill as done and archive it?')) return;
+        setArchiving(true);
+        const { error } = await supabase.from('bills').update({ status: 'archived' }).eq('id', id);
+        if (error) {
+            console.error('[handleArchiveBill]', error);
+            toast.error('Failed to archive');
+        } else {
+            toast.success('Bill archived');
+            setTimeout(() => navigate('/dashboard'), 1000);
+        }
+        setArchiving(false);
+    };
+
+    const handleSaveBillName = async () => {
+        if (!billNameInput.trim()) return toast.error('Bill name is required');
+        setSavingBillName(true);
+        const { error } = await supabase.from('bills')
+            .update({ name: billNameInput.trim() }).eq('id', id);
+        if (error) {
+            console.error('[handleSaveBillName]', error);
+            toast.error('Failed to rename bill');
+        } else {
+            setBill(prev => ({ ...prev, name: billNameInput.trim() }));
+            setEditingBillName(false);
+            toast.success('Bill renamed');
+        }
+        setSavingBillName(false);
+    };
+
+    //  Shared split insert helper 
+    const insertSplits = async (expenseId, form, splits) => {
+        if (form.split_type === 'equal') {
+            const splitAmount = Number((Number(form.amount) / members.length).toFixed(2));
+            const rows = members.map(m => ({
+                expense_id: expenseId,
+                user_id: m.user_id || m.guest_id,
+                amount: splitAmount,
+            }));
+            return supabase.from('expense_splits').insert(rows);
+        } else {
+            const rows = Object.entries(splits).map(([userId, amt]) => ({
+                expense_id: expenseId,
+                user_id: userId,
+                amount: Number(amt),
+            }));
+            return supabase.from('expense_splits').insert(rows);
+        }
+    };
+
+    const handleAddExpense = async () => {
+        const validationError = validateExpenseForm(expenseForm, customSplits);
+        if (validationError) return toast.error(validationError);
+
+        setAddingExpense(true);
+        try {
+            const { data: expense, error: expenseError } = await supabase
+                .from('expenses').insert({
+                    bill_id: id,
+                    name: expenseForm.name.trim(),
+                    amount: Number(expenseForm.amount),
+                    paid_by: expenseForm.paid_by,
+                    split_type: expenseForm.split_type,
+                }).select().single();
+            if (expenseError) throw expenseError;
+
+            const { error: splitError } = await insertSplits(expense.id, expenseForm, customSplits);
+            if (splitError) throw splitError;
+
+            toast.success('Expense added');
+            setShowAddExpense(false);
+            setExpenseForm(EXPENSE_FORM_DEFAULT);
+            setCustomSplits({});
+            fetchBillData();
+        } catch (err) {
+            console.error('[handleAddExpense]', err);
+            toast.error('Failed to add expense');
+        } finally {
+            setAddingExpense(false);
+        }
+    };
+
+    const handleOpenExpense = async (expense) => {
+        setSelectedExpense(expense);
+        setExpenseModalMode('view');
+        setEditExpenseForm({
+            name: expense.name,
+            amount: String(expense.amount),
+            paid_by: expense.paid_by,
+            split_type: expense.split_type,
+        });
+        setEditCustomSplits({});
+
+        const { data: splits, error } = await supabase
+            .from('expense_splits').select('*').eq('expense_id', expense.id);
+        if (error) console.error('[handleOpenExpense] splits error:', error);
+        setExpenseSplits(splits || []);
+    };
+
+    const handleSaveExpense = async () => {
+        const validationError = validateExpenseForm(editExpenseForm, editCustomSplits);
+        if (validationError) return toast.error(validationError);
+
+        setSavingExpense(true);
+        try {
+            const { error: updateError } = await supabase.from('expenses')
+                .update({
+                    name: editExpenseForm.name.trim(),
+                    amount: Number(editExpenseForm.amount),
+                    paid_by: editExpenseForm.paid_by,
+                    split_type: editExpenseForm.split_type,
+                }).eq('id', selectedExpense.id);
+            if (updateError) throw updateError;
+
+            const { error: deleteError } = await supabase
+                .from('expense_splits').delete().eq('expense_id', selectedExpense.id);
+            if (deleteError) throw deleteError;
+
+            const { error: splitError } = await insertSplits(selectedExpense.id, editExpenseForm, editCustomSplits);
+            if (splitError) throw splitError;
+
+            toast.success('Expense updated');
+            setSelectedExpense(null);
+            fetchBillData();
+        } catch (err) {
+            console.error('[handleSaveExpense]', err);
+            toast.error('Failed to update expense');
+        } finally {
+            setSavingExpense(false);
+        }
+    };
 
     // ── Search registered users ────────────────────────────────────
     useEffect(() => {
@@ -228,7 +486,7 @@ export default function BillDetail() {
     // ── Copy invite code ───────────────────────────────────────────
     const copyCode = () => {
         navigator.clipboard.writeText(bill.code);
-        toast.success('Code copied!');
+        toast.success('Copied!');
     };
 
     if (loading) {

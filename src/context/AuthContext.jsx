@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
             email,
             password,
             options: {
-                emailRedirectTo: 'https://billsplitterweb.vercel.app/login',
+                emailRedirectTo: `${import.meta.env.VITE_APP_URL}/login`,
                 data: {
                     first_name: profile.firstName,
                     last_name: profile.lastName,
@@ -43,9 +43,17 @@ export function AuthProvider({ children }) {
     }
 
     const signIn = async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-    }
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        // Block login if email not confirmed
+        if (!data.user.email_confirmed_at) {
+            await supabase.auth.signOut();
+            throw new Error('Please confirm your email before logging in. Check your inbox.');
+        }
+
+        return data;
+    };
 
     const signOut = async () => {
         const { error } = await supabase.auth.signOut()
@@ -54,16 +62,26 @@ export function AuthProvider({ children }) {
 
     const resetPassword = async (email) => {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: 'https://billsplitterweb.vercel.app/reset-password',
+            redirectTo: `${import.meta.env.VITE_APP_URL}/reset-password`,
         })
         if (error) throw error
     }
-
+    const resendConfirmation = async (email) => {
+        const { error } = await supabase.auth.resend({
+            type: 'signup',
+            email,
+            options: {
+                emailRedirectTo: `${import.meta.env.VITE_APP_URL}/login`,
+            }
+        });
+        if (error) throw error;
+    };
     return (
-        <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, resetPassword }}>
+        <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, resetPassword, resendConfirmation }}>
             {children}
         </AuthContext.Provider>
     )
+
 }
 
 export function useAuth() {
