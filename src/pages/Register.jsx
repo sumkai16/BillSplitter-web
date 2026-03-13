@@ -50,9 +50,7 @@ function getFieldError(name, value, form) {
   if (["firstName", "lastName", "nickname", "username"].includes(name)) {
     if (!trimmed) return "This field is required";
   }
-
   if (name === "email") return getEmailError(value);
-
   if (name === "password") {
     if (!trimmed) return "Password is required";
     if (value.length < 8 || value.length > 16) return "Password must be 8–16 characters";
@@ -61,7 +59,6 @@ function getFieldError(name, value, form) {
     if (!/[0-9]/.test(value)) return "Password needs at least one number";
     if (!/[!@#$%^&*(),.?\":{}|<>]/.test(value)) return "Password needs at least one special character";
   }
-
   if (name === "confirmPassword") {
     if (!trimmed) return "Please confirm your password";
     if (value !== form.password) return "Passwords do not match";
@@ -105,45 +102,87 @@ function BackgroundBlobs() {
   );
 }
 
+// Shared wrapper for post-submit screens (success, resend)
+function InfoScreen({ emoji, title, children }) {
+  return (
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-900 to-black text-white">
+      <BackgroundBlobs />
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-10 text-center"
+      >
+        <div className="text-5xl mb-4">{emoji}</div>
+        <h2 className="text-2xl font-semibold mb-4">{title}</h2>
+        {children}
+      </motion.div>
+    </div>
+  );
+}
+
 //  Main Component 
 
 export default function Register() {
-  const { signUp } = useAuth();
+  const { signUp, resendConfirmation } = useAuth();
 
   const [form, setForm] = useState(FORM_DEFAULT);
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
 
+  // Set when we detect an existing unconfirmed account
+  const [pendingResendEmail, setPendingResendEmail] = useState('');
+  const [resending, setResending] = useState(false);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
-    // Clear error on change
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
-  //  Submit 
+  //  Resend confirmation email 
+
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      await resendConfirmation(pendingResendEmail);
+      setPendingResendEmail('');
+      setRegistered(true);
+    } catch (err) {
+      console.error('[handleResend]', err);
+      const msg = err.message?.toLowerCase() || '';
+      // Already confirmed — just tell them to log in
+      if (msg.includes('already confirmed') || msg.includes('already registered')) {
+        setFieldErrors(prev => ({ ...prev, email: 'This email is already confirmed. Please log in.' }));
+        setPendingResendEmail('');
+      } else {
+        toast.error(err.message || 'Failed to resend confirmation email');
+      }
+    } finally {
+      setResending(false);
+    }
+  };
+
+  //  Register submit 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Check if all fields empty
     const allEmpty = Object.values(form).every(v => !v || v.trim() === "");
     if (allEmpty) {
       setFieldErrors(validateAll(form));
       return;
     }
 
-    // Client-side validation
     const errors = validateAll(form);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
     }
 
-    // ── Uniqueness checks (before hitting auth) ──
+    // Check if email already exists
     const { data: existingEmail, error: emailLookupError } = await supabase
       .from('profiles')
       .select('id')
@@ -155,10 +194,31 @@ export default function Register() {
     }
 
     if (existingEmail) {
-      setFieldErrors(prev => ({ ...prev, email: 'This email is already registered' }));
+      const { error: probeError } = await supabase.auth.signInWithPassword({
+        email: form.email.trim().toLowerCase(),
+        password: '___probe___',
+      });
+
+      const msg = probeError?.message?.toLowerCase() || '';
+      const code = probeError?.code?.toLowerCase() || '';
+      console.log('[handleSubmit] probe msg:', msg, '| code:', code);
+
+      const isConfirmed =
+        msg.includes('invalid login credentials') ||
+        msg.includes('invalid credentials') ||
+        code === 'invalid_credentials';
+
+      if (isConfirmed) {
+        setFieldErrors(prev => ({
+          ...prev,
+          email: 'This email is already registered. Please log in.'
+        }));
+      } else {
+        setPendingResendEmail(form.email.trim());
+      }
       return;
     }
-
+    // Check if username is taken
     const { data: existingUsername, error: usernameLookupError } = await supabase
       .from('profiles')
       .select('id')
@@ -174,7 +234,7 @@ export default function Register() {
       return;
     }
 
-    // ── Create account ──
+    // Create account
     setLoading(true);
     try {
       await signUp(form.email, form.password, {
@@ -192,31 +252,58 @@ export default function Register() {
     }
   };
 
-  //  Success screen 
+  //  Post-submit screens 
 
+  // New registration — confirmation email sent
   if (registered) {
     return (
-      <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-900 to-black text-white">
-        <BackgroundBlobs />
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-10 text-center"
+      <InfoScreen emoji="📬" title="Check your email">
+        <p className="text-slate-400 text-sm mb-6">
+          We sent a confirmation link to{" "}
+          <span className="text-emerald-400 font-semibold">
+            {form.email || pendingResendEmail}
+          </span>.
+          Click the link to activate your account.
+        </p>
+        <Link
+          to="/login"
+          className="inline-block bg-emerald-500 hover:bg-emerald-400 text-black px-6 py-3 rounded-xl font-semibold transition"
         >
-          <div className="text-5xl mb-4">📬</div>
-          <h2 className="text-2xl font-semibold mb-2">Check your email</h2>
-          <p className="text-slate-400 text-sm mb-6">
-            We sent a confirmation link to{" "}
-            <span className="text-emerald-400 font-semibold">{form.email}</span>
-          </p>
-          <Link
-            to="/login"
-            className="inline-block bg-emerald-500 hover:bg-emerald-400 text-black px-6 py-3 rounded-xl font-semibold transition"
-          >
-            Go to Login
-          </Link>
-        </motion.div>
-      </div>
+          Go to Login
+        </Link>
+      </InfoScreen>
+    );
+  }
+
+  // Existing unconfirmed account — offer resend
+  if (pendingResendEmail) {
+    return (
+      <InfoScreen emoji="📧" title="Email not confirmed yet">
+        <p className="text-slate-400 text-sm mb-2">
+          <span className="text-emerald-400 font-semibold">{pendingResendEmail}</span>{" "}
+          is registered but hasn't been confirmed yet.
+        </p>
+        <p className="text-slate-400 text-sm mb-6">
+          Resend the confirmation email to activate your account.
+        </p>
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          onClick={handleResend}
+          disabled={resending}
+          className="w-full bg-emerald-500 hover:bg-emerald-400 text-black py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition disabled:opacity-70 mb-3"
+        >
+          {resending
+            ? 'Sending...'
+            : <> Resend Confirmation Email <ArrowRight className="w-4 h-4" /></>
+          }
+        </motion.button>
+        <button
+          onClick={() => setPendingResendEmail('')}
+          className="text-sm text-slate-500 hover:text-white transition"
+        >
+          ← Back to Register
+        </button>
+      </InfoScreen>
     );
   }
 
@@ -246,74 +333,28 @@ export default function Register() {
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
-
           <div className="grid md:grid-cols-2 gap-4">
-            <InputField
-              icon={User}
-              name="firstName"
-              placeholder="First Name"
-              value={form.firstName}
-              onChange={handleChange}
-              error={fieldErrors.firstName}
-            />
-            <InputField
-              icon={User}
-              name="lastName"
-              placeholder="Last Name"
-              value={form.lastName}
-              onChange={handleChange}
-              error={fieldErrors.lastName}
-            />
+            <InputField icon={User} name="firstName" placeholder="First Name"
+              value={form.firstName} onChange={handleChange} error={fieldErrors.firstName} />
+            <InputField icon={User} name="lastName" placeholder="Last Name"
+              value={form.lastName} onChange={handleChange} error={fieldErrors.lastName} />
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            <InputField
-              icon={AtSign}
-              name="nickname"
-              placeholder="Nickname"
-              value={form.nickname}
-              onChange={handleChange}
-              error={fieldErrors.nickname}
-            />
-            <InputField
-              icon={AtSign}
-              name="username"
-              placeholder="Username"
-              value={form.username}
-              onChange={handleChange}
-              error={fieldErrors.username}
-            />
+            <InputField icon={AtSign} name="nickname" placeholder="Nickname"
+              value={form.nickname} onChange={handleChange} error={fieldErrors.nickname} />
+            <InputField icon={AtSign} name="username" placeholder="Username"
+              value={form.username} onChange={handleChange} error={fieldErrors.username} />
           </div>
 
-          <InputField
-            icon={Mail}
-            name="email"
-            type="email"
-            placeholder="Email address"
-            value={form.email}
-            onChange={handleChange}
-            error={fieldErrors.email}
-          />
+          <InputField icon={Mail} name="email" type="email" placeholder="Email address"
+            value={form.email} onChange={handleChange} error={fieldErrors.email} />
 
           <div className="grid md:grid-cols-2 gap-4">
-            <InputField
-              icon={Lock}
-              name="password"
-              type="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={handleChange}
-              error={fieldErrors.password}
-            />
-            <InputField
-              icon={Lock}
-              name="confirmPassword"
-              type="password"
-              placeholder="Confirm Password"
-              value={form.confirmPassword}
-              onChange={handleChange}
-              error={fieldErrors.confirmPassword}
-            />
+            <InputField icon={Lock} name="password" type="password" placeholder="Password"
+              value={form.password} onChange={handleChange} error={fieldErrors.password} />
+            <InputField icon={Lock} name="confirmPassword" type="password" placeholder="Confirm Password"
+              value={form.confirmPassword} onChange={handleChange} error={fieldErrors.confirmPassword} />
           </div>
 
           <motion.button
@@ -327,7 +368,6 @@ export default function Register() {
               : <> Create Account <ArrowRight className="w-4 h-4" /></>
             }
           </motion.button>
-
         </form>
 
         <p className="text-center text-sm text-slate-400 mt-8">
