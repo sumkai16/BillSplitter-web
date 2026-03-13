@@ -77,7 +77,7 @@ export default function Dashboard() {
           name: billName.trim(),
           code: billCode,
           host_id: profile.id,
-          status: "Active",
+          status: "active",
         })
         .select()
         .single();
@@ -106,7 +106,7 @@ export default function Dashboard() {
   };
   if (!user) return null;
   return (
-   <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-black text-white">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-100">
       <Toaster position="top-center" />
 
       <div className="flex justify-between items-center px-8 py-5">
@@ -117,7 +117,7 @@ export default function Dashboard() {
         />
 
         <div className="flex items-center gap-6">
-          <span className="text-lg text-slate-300 font-medium">
+          <span className="text-xl text-slate-600 font-medium">
             {profile?.first_name}
           </span>
 
@@ -141,7 +141,7 @@ export default function Dashboard() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="transition-all duration-300 hover:scale-102 hover:shadow-lg bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-3xl p-8 text-white shadow-xl"
+              className="transition-all duration-300 hover:scale-102 hover:shadow-lg bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-8 text-white shadow-xl"
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -183,9 +183,9 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="transition-all duration-300 hover:scale-[1.02] bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6"
+              className="cursor-pointer transition-all duration-300 hover:scale-102 hover:shadow-lg bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
             >
-              <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                 <User className="w-4 h-4 text-emerald-500" />
                 Account Details
               </h3>
@@ -216,13 +216,13 @@ export default function Dashboard() {
                 ].map(({ icon: Icon, label, value }) => (
                   <div
                     key={label}
-                    className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0"
+                    className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0"
                   >
-                    <div className="flex items-center gap-2 text-slate-400 text-sm">
+                    <div className="flex items-center gap-2 text-slate-500 text-sm">
                       <Icon className="w-4 h-4" />
                       {label}
                     </div>
-                    <span className="text-white text-sm font-medium">
+                    <span className="text-slate-800 text-sm font-medium">
                       {value
                         ? value.charAt(0).toUpperCase() +
                           value.slice(1).toLowerCase()
@@ -237,16 +237,16 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="cursor-pointer bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6 transition-all duration-300 hover:scale-[1.02] hover:border-emerald-500/40"
+              className="bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6"
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-white flex items-center gap-2">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2">
                   <Receipt className="w-4 h-4 text-emerald-500" />
                   My Bills
                 </h3>
                 <button
                   onClick={() => setShowCreateBill(true)}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl text-sm font-semibold transition"
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-sm font-semibold hover:from-emerald-700 hover:to-teal-700 shadow-md transition-all"
                 >
                   + New Bill
                 </button>
@@ -255,7 +255,7 @@ export default function Dashboard() {
               {bills.length === 0 ? (
                 <div className="text-center py-10">
                   <span className="text-4xl">🧾</span>
-                  <p className="text-slate-400 text-sm mt-3">
+                  <p className="text-slate-500 text-sm mt-3">
                     No bills yet. Create one to get started!
                   </p>
                 </div>
@@ -265,10 +265,10 @@ export default function Dashboard() {
                     <div
                       key={bill.id}
                       onClick={() => navigate(`/bills/${bill.id}`)}
-                      className="flex items-center justify-between p-4 rounded-2xl border border-slate-800 hover:border-emerald-500/40 hover:bg-slate-800 transition-all cursor-pointer">
-                    
+                      className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all cursor-pointer"
+                    >
                       <div>
-                        <p className="font-semibold text-white text-sm">
+                        <p className="font-semibold text-slate-800 text-sm">
                           {bill.name}
                         </p>
                         <p className="text-xs text-slate-400 mt-0.5">
@@ -281,7 +281,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2">
                         <span
                           className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            bill.status === "Active"
+                            bill.status === "active"
                               ? "bg-emerald-100 text-emerald-700"
                               : "bg-gray-100 text-gray-500"
                           }`}
@@ -303,9 +303,9 @@ export default function Dashboard() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
-            className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-8 text-white"
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8"
           >
-            <h2 className="text-xl font-bold text-whitemb-6 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
               <Receipt className="w-5 h-5 text-emerald-500" />
               Create New Bill
             </h2>
@@ -313,7 +313,7 @@ export default function Dashboard() {
             <div className="space-y-4">
               {/* Bill Name */}
               <div>
-                <label className="text-sm font-medium text-slate-400 mb-1 block">
+                <label className="text-sm font-medium text-slate-600 mb-1 block">
                   Bill Name
                 </label>
                 <input
@@ -321,7 +321,7 @@ export default function Dashboard() {
                   placeholder="e.g. Dinner at Jollibee"
                   value={billName}
                   onChange={(e) => setBillName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-black bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm transition"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm transition"
                 />
               </div>
 
@@ -358,7 +358,7 @@ export default function Dashboard() {
                   setBillName("");
                   setBillCode(generateCode());
                 }}
-                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 font-semibold hover:bg-slate-50 transition text-sm"
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition text-sm"
               >
                 Cancel
               </button>
@@ -377,24 +377,15 @@ export default function Dashboard() {
     </div>
   );
 }
+
 function StatCard({ icon: Icon, label, value }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -6, scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6 shadow-lg hover:shadow-emerald-500/10 transition"
-    >
+    <div className="cursor-pointer bg-white/80 backdrop-blur-md rounded-3xl shadow-md border border-white/40 p-6 transition-all duration-300 hover:scale-102 hover:shadow-lg hover:border-2 hover:border-emerald-200 hover:rounded-xl">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">{label}</p>
         <Icon className="w-5 h-5 text-emerald-500" />
       </div>
-
-      <h3 className="text-2xl font-bold text-white mt-2">
-        {value}
-      </h3>
-    </motion.div>
+      <h3 className="text-2xl font-bold text-slate-800 mt-2">{value}</h3>
+    </div>
   );
 }
