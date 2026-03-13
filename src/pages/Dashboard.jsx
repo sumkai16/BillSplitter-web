@@ -169,7 +169,7 @@ export default function Dashboard() {
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-emerald-100 text-sm mb-1">Welcome back 👋</p>
+                  <p className="text-emerald-100 text-sm mb-1">Welcome back, </p>
                   <h2 className="text-2xl font-bold">
                     {profile?.first_name} {profile?.last_name}
                   </h2>
