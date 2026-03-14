@@ -10,6 +10,239 @@ import {
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const SPLIT_TOLERANCE = 0.01; // allow ₱0.01 rounding diff in custom splits
+
+const TOAST_STYLE = {
+    style: { background: '#1e293b', color: '#fff', border: '1px solid #334155', fontSize: '13px' }
+};
+
+const EXPENSE_FORM_DEFAULT = { name: '', amount: '', paid_by: '', split_type: 'equal' };
+const GUEST_FORM_DEFAULT = { firstName: '', lastName: '', email: '' };
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// ─── Small reusable UI pieces ─────────────────────────────────────────────────
+
+function Spinner() {
+    return (
+        <div className="min-h-screen bg-black flex items-center justify-center">
+            <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+    );
+}
+
+function ModalShell({ onClose, children }) {
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4"
+        >
+            <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 40 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="bg-slate-900 border border-slate-700/60 rounded-2xl w-full max-w-md p-6"
+            >
+                {children}
+            </motion.div>
+        </motion.div>
+    );
+}
+
+function ModalHeader({ title, onClose, children }) {
+    return (
+        <div className="flex items-center justify-between mb-5">
+            <h2 className="font-semibold text-white">{title}</h2>
+            <div className="flex items-center gap-2">
+                {children}
+                <button
+                    onClick={onClose}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-800 transition text-slate-500"
+                >
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function SegmentedControl({ options, value, onChange }) {
+    return (
+        <div className="flex bg-slate-800/60 rounded-xl p-1 border border-slate-700/40">
+            {options.map(opt => (
+                <button
+                    key={opt.value}
+                    onClick={() => onChange(opt.value)}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${value === opt.value
+                        ? 'bg-slate-700 text-white'
+                        : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                >
+                    {opt.label}
+                </button>
+            ))}
+        </div>
+    );
+}
+
+function DashedAddButton({ onClick, icon: Icon, label }) {
+    return (
+        <button
+            onClick={onClick}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-slate-700 hover:border-emerald-500/50 text-slate-500 hover:text-emerald-400 text-sm font-medium transition mb-3"
+        >
+            <Icon className="w-4 h-4" />
+            {label}
+        </button>
+    );
+}
+
+function TextInput({ value, onChange, placeholder, type = 'text', className = '', ...rest }) {
+    const base = "w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 text-sm";
+    return (
+        <input
+            type={type}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            className={`${base} ${className}`}
+            {...rest}
+        />
+    );
+}
+
+function AmountInput({ value, onChange, placeholder = "0.00" }) {
+    return (
+        <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">₱</span>
+            <input
+                type="number"
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+                className="w-full pl-8 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 text-sm"
+            />
+        </div>
+    );
+}
+
+// ─── Custom Split Rows (shared between Add and Edit modals) ───────────────────
+
+function CustomSplitRows({ members, splits, onChange, expenseAmount }) {
+    const total = Object.values(splits).reduce((sum, v) => sum + Number(v || 0), 0);
+    const remaining = Number(expenseAmount || 0) - total;
+    const isBalanced = Math.abs(remaining) <= SPLIT_TOLERANCE;
+
+    return (
+        <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-500">Amount per person</p>
+                <p className={`text-xs font-semibold ${isBalanced ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {isBalanced
+                        ? '✓ Balanced'
+                        : remaining > 0
+                            ? `₱${remaining.toFixed(2)} remaining`
+                            : `₱${Math.abs(remaining).toFixed(2)} over`
+                    }
+                </p>
+            </div>
+            {members.map(member => {
+                const name = member.member_type === 'guest'
+                    ? `${member.guests?.first_name} ${member.guests?.last_name}`
+                    : `${member.profiles?.first_name} ${member.profiles?.last_name}`;
+                const key = member.user_id || member.guest_id;
+                return (
+                    <div key={member.id} className="flex items-center gap-3">
+                        <span className="text-sm text-slate-400 flex-1 truncate">{name}</span>
+                        <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">₱</span>
+                            <input
+                                type="number"
+                                placeholder="0.00"
+                                value={splits[key] || ''}
+                                onChange={e => onChange({ ...splits, [key]: e.target.value })}
+                                className="w-28 pl-7 pr-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 text-sm"
+                            />
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+// ─── Expense Form Fields (shared between Add and Edit modals) ─────────────────
+
+function ExpenseFormFields({ form, onChange, members, customSplits, onCustomSplitsChange }) {
+    const SPLIT_OPTIONS = [
+        { value: 'equal', label: 'Split equally' },
+        { value: 'custom', label: 'Custom split' },
+    ];
+
+    return (
+        <div className="space-y-3">
+            <TextInput
+                value={form.name}
+                onChange={e => onChange({ ...form, name: e.target.value })}
+                placeholder="Expense name"
+            />
+            <AmountInput
+                value={form.amount}
+                onChange={e => onChange({ ...form, amount: e.target.value })}
+            />
+            <select
+                value={form.paid_by}
+                onChange={e => onChange({ ...form, paid_by: e.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-emerald-500/50 text-sm"
+            >
+                <option value="">Who paid?</option>
+                {members.map(member => {
+                    const name = member.member_type === 'guest'
+                        ? `${member.guests?.first_name} ${member.guests?.last_name} (guest)`
+                        : `${member.profiles?.first_name} ${member.profiles?.last_name}`;
+                    const value = member.member_type === 'guest' ? member.guest_id : member.user_id;
+                    return <option key={member.id} value={value}>{name}</option>;
+                })}
+            </select>
+            <SegmentedControl
+                options={SPLIT_OPTIONS}
+                value={form.split_type}
+                onChange={val => onChange({ ...form, split_type: val })}
+            />
+            {form.split_type === 'custom' && (
+                <CustomSplitRows
+                    members={members}
+                    splits={customSplits}
+                    onChange={onCustomSplitsChange}
+                    expenseAmount={form.amount}
+                />
+            )}
+        </div>
+    );
+}
+
+// ─── Validation helpers ───────────────────────────────────────────────────────
+
+function validateExpenseForm(form, customSplits) {
+    if (!form.name.trim()) return 'Expense name is required';
+    if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0) return 'Enter a valid amount';
+    if (!form.paid_by) return 'Select who paid';
+    if (form.split_type === 'custom') {
+        const total = Object.values(customSplits).reduce((sum, v) => sum + Number(v || 0), 0);
+        if (Object.keys(customSplits).length === 0) return 'Enter amounts for each member';
+        const diff = Math.abs(total - Number(form.amount));
+        if (diff > SPLIT_TOLERANCE)
+            return `Split total ₱${total.toFixed(2)} must equal ₱${Number(form.amount).toFixed(2)}`;
+    }
+    return null; // valid
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export default function BillDetail() {
     const { id } = useParams();
     const { user } = useAuth();
@@ -22,23 +255,42 @@ export default function BillDetail() {
     const [loading, setLoading] = useState(true);
     const [isHost, setIsHost] = useState(false);
 
-    // Add member modal state
+    //  UI 
+    const [activeTab, setActiveTab] = useState('expenses');
+    const [archiving, setArchiving] = useState(false);
+    const [guestSession, setGuestSession] = useState(null);
+
+    //  Inline bill 
+    const [editingBillName, setEditingBillName] = useState(false);
+    const [billNameInput, setBillNameInput] = useState('');
+    const [savingBillName, setSavingBillName] = useState(false);
+
+    // Add member modal 
     const [showAddMember, setShowAddMember] = useState(false);
-    const [memberType, setMemberType] = useState('registered'); // 'registered' or 'guest'
+    const [memberType, setMemberType] = useState('registered');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
     const [addingMember, setAddingMember] = useState(false);
     const [guestForm, setGuestForm] = useState(GUEST_FORM_DEFAULT);
 
-    // Guest form state
-    const [guestForm, setGuestForm] = useState({
-        firstName: '', lastName: '', email: ''
-    });
+    //  Add expense modal 
+    const [showAddExpense, setShowAddExpense] = useState(false);
+    const [expenseForm, setExpenseForm] = useState(EXPENSE_FORM_DEFAULT);
+    const [customSplits, setCustomSplits] = useState({});
+    const [addingExpense, setAddingExpense] = useState(false);
 
-    const [guestSession, setGuestSession] = useState(null);
+    //  Expense view/edit modal 
+    const [selectedExpense, setSelectedExpense] = useState(null);
+    const [expenseModalMode, setExpenseModalMode] = useState('view'); // 'view' | 'edit'
+    const [editExpenseForm, setEditExpenseForm] = useState(EXPENSE_FORM_DEFAULT);
+    const [editCustomSplits, setEditCustomSplits] = useState({});
+    const [expenseSplits, setExpenseSplits] = useState([]);
+    const [savingExpense, setSavingExpense] = useState(false);
+
+    //  Guest session check 
+
     useEffect(() => {
-        // Check for guest session
         const stored = localStorage.getItem('guest_session');
         if (stored) {
             const session = JSON.parse(stored);
@@ -49,17 +301,18 @@ export default function BillDetail() {
                 navigate('/join');
             }
         } else if (!user) {
-            // No user, no guest session — redirect
             navigate('/login');
         }
     }, []);
-    // ── Fetch bill + members ───────────────────────────────────────
-    const fetchBillData = async () => {
-        // Fetch bill
+
+    //  Fetch bill data 
+
+    const fetchBillData = useCallback(async () => {
         const { data: billData, error: billError } = await supabase
             .from('bills').select('*').eq('id', id).single();
 
         if (billError) {
+            console.error('[fetchBillData] bill error:', billError);
             toast.error('Bill not found');
             navigate('/dashboard');
             return;
@@ -82,33 +335,14 @@ export default function BillDetail() {
 
         setBill(billData);
         setIsHost(billData.host_id === user?.id);
-        // Fetch members with profile info
-        const { data: memberData } = await supabase
-            .from('bill_members')
-            .select(`
-                id,
-                role,
-                member_type,
-                user_id,
-                guest_id,
-                profiles:user_id (
-                    first_name,
-                    last_name,
-                    email,
-                    username
-                ),
-                guests:guest_id (
-                    first_name,
-                    last_name,
-                    email
-                )
-            `)
-            .eq('bill_id', id);
-
         setMembers(memberData || []);
         setExpenses(expenseData || []);
         setLoading(false);
-    };
+    }, [id, user, navigate]);
+
+    useEffect(() => { fetchBillData(); }, [fetchBillData]);
+
+    //  Member search 
 
     useEffect(() => {
         if (memberType !== 'registered' || searchQuery.trim().length < 2) {
@@ -355,435 +589,324 @@ export default function BillDetail() {
         }
     };
 
-    // ── Search registered users ────────────────────────────────────
-    useEffect(() => {
-        if (memberType !== 'registered' || searchQuery.trim().length < 2) {
-            setSearchResults([]);
-            return;
-        }
-
-        const timeout = setTimeout(async () => {
-            setSearching(true);
-            const { data } = await supabase
-                .from('profiles')
-                .select('id, first_name, last_name, email, username')
-                .or(`username.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
-                .neq('id', user.id)
-                .limit(5);
-
-            // Filter out already added members
-            const existingIds = members
-                .filter(m => m.member_type === 'registered')
-                .map(m => m.user_id);
-
-            setSearchResults((data || []).filter(u => !existingIds.includes(u.id)));
-            setSearching(false);
-        }, 400);
-
-        return () => clearTimeout(timeout);
-    }, [searchQuery, memberType]);
-
-    // ── Add registered user ────────────────────────────────────────
-    const handleAddRegistered = async (profile) => {
-        setAddingMember(true);
-        try {
-            const { error } = await supabase
-                .from('bill_members')
-                .insert({
-                    bill_id: id,
-                    user_id: profile.id,
-                    role: 'member',
-                    member_type: 'registered',
-                });
-
-            if (error) throw error;
-            toast.success(`${profile.first_name} added to bill`);
-            setSearchQuery('');
-            setSearchResults([]);
-            fetchBillData();
-        } catch (err) {
-            toast.error(err.message);
-        } finally {
-            setAddingMember(false);
-        }
-    };
-
-    // ── Add guest ──────────────────────────────────────────────────
-    const handleAddGuest = async () => {
-        const { firstName, lastName, email } = guestForm;
-        if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-            return toast.error('All guest fields are required');
-        }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return toast.error('Please enter a valid email');
-        }
-
-        setAddingMember(true);
-        try {
-            // Check if guest email already exists
-            const { data: existingGuest } = await supabase
-                .from('guests')
-                .select('id')
-                .eq('email', email)
-                .maybeSingle();
-
-            let guestId;
-
-            if (existingGuest) {
-                guestId = existingGuest.id;
-            } else {
-                // Create new guest
-                const { data: newGuest, error: guestError } = await supabase
-                    .from('guests')
-                    .insert({
-                        first_name: firstName.trim(),
-                        last_name: lastName.trim(),
-                        email: email.trim(),
-                        invited_by: user.id,
-                    })
-                    .select()
-                    .single();
-
-                if (guestError) throw guestError;
-                guestId = newGuest.id;
-            }
-
-            // Add to bill_members
-            const { error: memberError } = await supabase
-                .from('bill_members')
-                .insert({
-                    bill_id: id,
-                    guest_id: guestId,
-                    role: 'member',
-                    member_type: 'guest',
-                });
-
-            if (memberError) throw memberError;
-
-            toast.success('Guest added to bill');
-            setGuestForm({ firstName: '', lastName: '', email: '' });
-            setShowAddMember(false);
-            fetchBillData();
-        } catch (err) {
-            toast.error(err.message);
-        } finally {
-            setAddingMember(false);
-        }
-    };
-
-    // ── Remove member ──────────────────────────────────────────────
-    const handleRemoveMember = async (memberId) => {
-        const { error } = await supabase
-            .from('bill_members')
-            .delete()
-            .eq('id', memberId);
-
-        if (error) return toast.error('Failed to remove member');
-        toast.success('Member removed');
-        fetchBillData();
-    };
-
-    // ── Copy invite code ───────────────────────────────────────────
     const copyCode = () => {
         navigator.clipboard.writeText(bill.code);
         toast.success('Copied!');
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-100 flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-            </div>
-        );
-    }
+    const closeAddMember = () => {
+        setShowAddMember(false);
+        setSearchQuery('');
+        setSearchResults([]);
+        setGuestForm(GUEST_FORM_DEFAULT);
+    };
+
+    // ─── Render ───────────────────────────────────────────────────────────────
+
+    if (loading) return <Spinner />;
+
+    const isArchived = bill.status === 'archived';
+
+    const MEMBER_TYPE_OPTIONS = [
+        { value: 'registered', label: 'Registered User' },
+        { value: 'guest', label: 'Guest' },
+    ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-slate-100">
-            <Toaster position="top-center" />
+        <div className="min-h-screen bg-black text-white">
+            <Toaster position="top-center" toastOptions={TOAST_STYLE} />
 
-            {/* Header */}
-            <div className="bg-white/80 backdrop-blur-md border-b border-white/40 sticky top-0 z-10">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
+            {/* ── Top bar ── */}
+            <div className="border-b border-slate-800/60 sticky top-0 z-10 bg-black/80 backdrop-blur-xl">
+                <div className="max-w-2xl mx-auto px-5 py-4 flex items-center gap-3">
                     <button
                         onClick={() => navigate('/dashboard')}
-                        className="p-2 rounded-xl hover:bg-slate-100 transition text-slate-500"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 transition text-slate-500 hover:text-white"
                     >
-                        <ArrowLeft className="w-5 h-5" />
+                        <ArrowLeft className="w-4 h-4" />
                     </button>
-                    <div className="flex-1">
-                        <h1 className="font-bold text-slate-800">{bill.name}</h1>
-                        <p className="text-xs text-slate-400">
-                            {members.length} member{members.length !== 1 ? 's' : ''}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                            Track who paid what and split fairly.
-                        </p>
+
+                    {/* Bill name — inline edit */}
+                    <div className="flex-1 min-w-0">
+                        {editingBillName ? (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={billNameInput}
+                                    onChange={e => setBillNameInput(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') handleSaveBillName();
+                                        if (e.key === 'Escape') setEditingBillName(false);
+                                    }}
+                                    autoFocus
+                                    className="bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-emerald-500 w-40"
+                                />
+                                <button
+                                    onClick={handleSaveBillName}
+                                    disabled={savingBillName}
+                                    className="w-6 h-6 flex items-center justify-center rounded-md bg-emerald-500 hover:bg-emerald-400 text-black transition disabled:opacity-50"
+                                >
+                                    <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => setEditingBillName(false)}
+                                    className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-700 text-slate-400 transition"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <h1 className="font-semibold text-white text-sm truncate">{bill.name}</h1>
+                                {isHost && !isArchived && (
+                                    <button
+                                        onClick={() => { setBillNameInput(bill.name); setEditingBillName(true); }}
+                                        className="w-5 h-5 flex items-center justify-center rounded text-slate-600 hover:text-slate-300 transition flex-shrink-0"
+                                    >
+                                        <Pencil className="w-3 h-3" />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                        <p className="text-xs text-slate-500">{members.length} member{members.length !== 1 ? 's' : ''}</p>
                     </div>
-                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${bill.status === 'active'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-gray-100 text-gray-500'
-                        }`}>
-                        {bill.status}
-                    </span>
+
+                    <div className="flex items-center gap-2">
+                        {isHost && !isArchived && (
+                            <button
+                                onClick={handleArchiveBill}
+                                disabled={archiving}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-amber-500/50 text-slate-400 hover:text-amber-400 text-xs font-medium transition disabled:opacity-40"
+                            >
+                                <Archive className="w-3.5 h-3.5" />
+                                {archiving ? 'Archiving...' : 'Archive'}
+                            </button>
+                        )}
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isArchived ? 'bg-slate-800 text-slate-400' : 'bg-emerald-950 text-emerald-400'}`}>
+                            {bill.status}
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <div className="relative max-w-6xl mx-auto px-6 py-10 space-y-8">
-                <div className="pointer-events-none absolute -top-10 -right-10 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-200/40 to-teal-200/40 blur-3xl" />
-                <div className="pointer-events-none absolute top-40 -left-10 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-100/50 to-slate-200/40 blur-3xl" />
+            {/* ── Page content ── */}
+            <div className="max-w-2xl mx-auto px-5 py-6 space-y-4">
 
-                {/* Top Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Invite Code Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="lg:col-span-2 bg-white/80 backdrop-blur-md rounded-3xl shadow-lg border border-white/60 p-6 hover:shadow-xl transition"
-                    >
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <h3 className="font-bold text-slate-800 mb-1 flex items-center gap-2">
-                                    <Receipt className="w-4 h-4 text-emerald-500" />
-                                    Invite Code
-                                </h3>
-                                <p className="text-xs text-slate-400">
-                                    Share this code to invite people to this bill
-                                </p>
-                            </div>
-                            {isHost && (
-                                <button
-                                    onClick={() => setShowAddMember(true)}
-                                    className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-xs font-semibold hover:from-emerald-700 hover:to-teal-700 transition shadow-md"
-                                >
-                                    <UserPlus className="w-4 h-4" />
-                                    Add Member
-                                </button>
-                            )}
+                {/* Hero summary card */}
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-2xl bg-gradient-to-br from-emerald-950/60 to-slate-900/60 border border-emerald-900/30 p-5"
+                >
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <p className="text-xs text-slate-500 mb-1">Total Expenses</p>
+                            <p className="text-3xl font-bold text-white tracking-tight">
+                                ₱{totalExpenses.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">
+                                across {expenses.length} expense{expenses.length !== 1 ? 's' : ''}
+                            </p>
                         </div>
-                        <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                            <div className="flex-1 bg-slate-50 rounded-2xl px-6 py-4 font-mono font-bold text-2xl tracking-[0.35em] text-slate-800 text-center border border-slate-200">
-                                {bill.code}
-                            </div>
+                        <div className="text-right">
+                            <p className="text-xs text-slate-500 mb-1.5">Invite Code</p>
                             <button
                                 onClick={copyCode}
-                                className="p-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition shadow-sm"
+                                className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-xl px-3 py-2 transition group"
                             >
-                                <Copy className="w-5 h-5" />
+                                <span className="font-mono font-bold text-sm tracking-widest text-white">{bill.code}</span>
+                                <Copy className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 transition" />
                             </button>
                         </div>
-                    </motion.div>
+                    </div>
+                </motion.div>
 
-                    {/* Quick Stats */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.05 }}
-                        className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-3xl shadow-xl p-6 text-white"
-                    >
-                        <p className="text-emerald-100 text-xs uppercase tracking-widest">
-                            Bill Overview
-                        </p>
-                        <h3 className="text-2xl font-bold mt-2">{bill.name}</h3>
-                        <div className="mt-5 grid grid-cols-2 gap-4">
-                            <div className="bg-white/15 rounded-2xl p-4">
-                                <p className="text-xs text-emerald-50">Members</p>
-                                <p className="text-2xl font-bold">{members.length}</p>
-                            </div>
-                            <div className="bg-white/15 rounded-2xl p-4">
-                                <p className="text-xs text-emerald-50">Status</p>
-                                <p className="text-lg font-semibold capitalize">{bill.status}</p>
-                            </div>
-                        </div>
-                        {isHost && (
-                            <button
-                                onClick={() => setShowAddMember(true)}
-                                className="mt-5 w-full flex items-center justify-center gap-2 rounded-2xl bg-white/20 hover:bg-white/30 text-white py-3 text-sm font-semibold transition"
-                            >
-                                <UserPlus className="w-4 h-4" />
-                                Invite a Member
-                            </button>
-                        )}
-                    </motion.div>
+                {/* Tabs */}
+                <div className="flex bg-slate-900/50 rounded-xl p-1 border border-slate-800/50">
+                    {['expenses', 'members'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition capitalize ${activeTab === tab
+                                ? 'bg-slate-800 text-white shadow-sm'
+                                : 'text-slate-500 hover:text-slate-300'
+                                }`}
+                        >
+                            {tab === 'expenses' ? `Expenses (${expenses.length})` : `Members (${members.length})`}
+                        </button>
+                    ))}
                 </div>
 
-                {/* Members Card */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-white/80 backdrop-blur-md rounded-3xl shadow-lg border border-white/60 p-6 hover:shadow-xl transition"
-                >
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                            <Users className="w-4 h-4 text-emerald-500" />
-                            Members ({members.length})
-                        </h3>
-                        {isHost && (
-                            <button
-                                onClick={() => setShowAddMember(true)}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-sm font-semibold hover:from-emerald-700 hover:to-teal-700 transition shadow-md"
-                            >
-                                <UserPlus className="w-4 h-4" />
-                                Add Member
-                            </button>
-                        )}
-                    </div>
+                <AnimatePresence mode="wait">
 
-                    <div className="space-y-3">
-                        {members.map((member) => {
-                            const name = member.member_type === 'guest'
-                                ? `${member.guests?.first_name} ${member.guests?.last_name}`
-                                : `${member.profiles?.first_name} ${member.profiles?.last_name}`;
-                            const email = member.member_type === 'guest'
-                                ? member.guests?.email
-                                : member.profiles?.email;
+                    {/* Expenses tab */}
+                    {activeTab === 'expenses' && (
+                        <motion.div
+                            key="expenses"
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ duration: 0.15 }}
+                        >
+                            {isHost && !isArchived && (
+                                <DashedAddButton
+                                    onClick={() => {
+                                        setExpenseForm({ ...EXPENSE_FORM_DEFAULT, paid_by: user?.id || '' });
+                                        setCustomSplits({});
+                                        setShowAddExpense(true);
+                                    }}
+                                    icon={Plus}
+                                    label="Add Expense"
+                                />
+                            )}
 
-                            return (
-                                <div
-                                    key={member.id}
-                                    className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center text-white font-bold text-sm">
-                                            {name?.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-semibold text-slate-800">{name}</p>
-                                            <p className="text-xs text-slate-400">{email}</p>
-                                        </div>
+                            {expenses.length === 0 ? (
+                                <div className="text-center py-16">
+                                    <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto mb-3">
+                                        <Receipt className="w-5 h-5 text-slate-600" />
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${member.role === 'host'
-                                            ? 'bg-emerald-100 text-emerald-700'
-                                            : member.member_type === 'guest'
-                                                ? 'bg-gray-100 text-gray-500'
-                                                : 'bg-teal-100 text-teal-700'
-                                            }`}>
-                                            {member.role === 'host' ? 'Host' : member.member_type === 'guest' ? 'Guest' : 'Member'}
-                                        </span>
-                                        {isHost && member.role !== 'host' && (
-                                            <button
-                                                onClick={() => handleRemoveMember(member.id)}
-                                                className="p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition"
-                                            >
-                                                <X className="w-3.5 h-3.5" />
-                                            </button>
-                                        )}
-                                    </div>
+                                    <p className="text-slate-500 text-sm">No expenses yet</p>
+                                    <p className="text-slate-600 text-xs mt-1">Add one to get started</p>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </motion.div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {expenses.map((expense, i) => (
+                                        <motion.div
+                                            key={expense.id}
+                                            initial={{ opacity: 0, y: 6 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.04 }}
+                                            onClick={() => handleOpenExpense(expense)}
+                                            className="flex items-center gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-slate-700 transition cursor-pointer"
+                                        >
+                                            <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
+                                                <CreditCard className="w-4 h-4 text-slate-400" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-white truncate">{expense.name}</p>
+                                                <p className="text-xs text-slate-500 mt-0.5">
+                                                    {getPayerName(expense.paid_by)} paid · {expense.split_type === 'equal' ? 'split equally' : 'custom split'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <span className="text-sm font-semibold text-emerald-400">
+                                                    ₱{Number(expense.amount).toFixed(2)}
+                                                </span>
+                                                <ChevronRight className="w-4 h-4 text-slate-600" />
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
 
-                {/* Expenses Card */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-white/80 backdrop-blur-md rounded-3xl shadow-lg border border-white/60 p-6 hover:shadow-xl transition"
-                >
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                            <Receipt className="w-4 h-4 text-emerald-500" />
-                            Expenses
-                        </h3>
-                        <button className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition">
-                            + Add Expense
-                        </button>
-                    </div>
-                    <div className="text-center py-12 rounded-3xl border border-dashed border-emerald-200 bg-gradient-to-br from-emerald-50/70 to-teal-50/50">
-                        <span className="text-4xl">📋</span>
-                        <p className="text-slate-500 text-sm mt-3">
-                            No details yet. Add an expense to get started.
-                        </p>
-                    </div>
-                </motion.div>
+                    {/* Members tab */}
+                    {activeTab === 'members' && (
+                        <motion.div
+                            key="members"
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ duration: 0.15 }}
+                        >
+                            {isHost && !isArchived && (
+                                <DashedAddButton
+                                    onClick={() => setShowAddMember(true)}
+                                    icon={UserPlus}
+                                    label="Add Member"
+                                />
+                            )}
+
+                            <div className="space-y-2">
+                                {members.map((member, i) => {
+                                    const name = getMemberName(member);
+                                    const email = member.member_type === 'guest'
+                                        ? member.guests?.email
+                                        : member.profiles?.email;
+                                    const initials = name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+                                    return (
+                                        <motion.div
+                                            key={member.id}
+                                            initial={{ opacity: 0, y: 6 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.04 }}
+                                            className="flex items-center gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-slate-700 transition"
+                                        >
+                                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                                                {initials}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-white truncate">{name}</p>
+                                                <p className="text-xs text-slate-500 truncate">{email}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${member.role === 'host'
+                                                    ? 'bg-emerald-950 text-emerald-400'
+                                                    : member.member_type === 'guest'
+                                                        ? 'bg-slate-800 text-slate-400'
+                                                        : 'bg-teal-950 text-teal-400'
+                                                    }`}>
+                                                    {member.role === 'host' ? 'host' : member.member_type === 'guest' ? 'guest' : 'member'}
+                                                </span>
+                                                {isHost && member.role !== 'host' && !isArchived && (
+                                                    <button
+                                                        onClick={() => handleRemoveMember(member.id)}
+                                                        className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-950 text-slate-600 hover:text-red-400 transition"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
-            {/* Add Member Modal */}
-            {showAddMember && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.2 }}
-                        className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8"
-                    >
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold text-slate-800">Add Member</h2>
-                            <button
-                                onClick={() => {
-                                    setShowAddMember(false);
-                                    setSearchQuery('');
-                                    setSearchResults([]);
-                                    setGuestForm({ firstName: '', lastName: '', email: '' });
-                                }}
-                                className="p-2 rounded-xl hover:bg-slate-100 transition text-slate-400"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+            {/* ── Add Member Modal ── */}
+            <AnimatePresence>
+                {showAddMember && (
+                    <ModalShell onClose={closeAddMember}>
+                        <ModalHeader title="Add Member" onClose={closeAddMember} />
+
+                        <div className="mb-5">
+                            <SegmentedControl
+                                options={MEMBER_TYPE_OPTIONS}
+                                value={memberType}
+                                onChange={setMemberType}
+                            />
                         </div>
 
-                        {/* Toggle */}
-                        <div className="flex bg-slate-100 rounded-2xl p-1 mb-6">
-                            <button
-                                onClick={() => setMemberType('registered')}
-                                className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${memberType === 'registered'
-                                    ? 'bg-white shadow text-slate-800'
-                                    : 'text-slate-500'
-                                    }`}
-                            >
-                                <UserCircle className="w-4 h-4 inline mr-1.5" />
-                                Registered User
-                            </button>
-                            <button
-                                onClick={() => setMemberType('guest')}
-                                className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${memberType === 'guest'
-                                    ? 'bg-white shadow text-slate-800'
-                                    : 'text-slate-500'
-                                    }`}
-                            >
-                                <Users className="w-4 h-4 inline mr-1.5" />
-                                Guest
-                            </button>
-                        </div>
-
-                        {/* Registered User Search */}
                         {memberType === 'registered' && (
                             <div className="space-y-3">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-3.5 text-slate-400 w-4 h-4" />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
                                     <input
                                         type="text"
-                                        placeholder="Search by username or email..."
+                                        placeholder="Search by username..."
                                         value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm transition"
+                                        onChange={e => setSearchQuery(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 text-sm"
                                     />
                                 </div>
-
-                                {searching && (
-                                    <p className="text-xs text-slate-400 text-center">Searching...</p>
-                                )}
-
+                                {searching && <p className="text-xs text-slate-500 text-center py-2">Searching...</p>}
                                 {searchResults.length > 0 && (
-                                    <div className="space-y-2">
-                                        {searchResults.map((profile) => (
-                                            <div
-                                                key={profile.id}
-                                                className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition"
-                                            >
+                                    <div className="space-y-1.5">
+                                        {searchResults.map(profile => (
+                                            <div key={profile.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/60 border border-slate-700/40 hover:border-slate-600 transition">
                                                 <div>
-                                                    <p className="text-sm font-semibold text-slate-800">
-                                                        {profile.first_name} {profile.last_name}
-                                                    </p>
-                                                    <p className="text-xs text-slate-400">@{profile.username}</p>
+                                                    <p className="text-sm font-medium text-white">{profile.first_name} {profile.last_name}</p>
+                                                    <p className="text-xs text-slate-500">@{profile.username}</p>
                                                 </div>
                                                 <button
                                                     onClick={() => handleAddRegistered(profile)}
                                                     disabled={addingMember}
-                                                    className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition"
+                                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-950 hover:bg-emerald-500 text-emerald-400 hover:text-black transition"
                                                 >
                                                     <Check className="w-4 h-4" />
                                                 </button>
@@ -791,52 +914,163 @@ export default function BillDetail() {
                                         ))}
                                     </div>
                                 )}
-
                                 {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
-                                    <p className="text-xs text-slate-400 text-center py-4">No users found</p>
+                                    <p className="text-xs text-slate-500 text-center py-4">No users found</p>
                                 )}
                             </div>
                         )}
 
-                        {/* Guest Form */}
                         {memberType === 'guest' && (
                             <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <input
-                                        type="text"
+                                <div className="grid grid-cols-2 gap-2.5">
+                                    <TextInput
                                         placeholder="First Name"
                                         value={guestForm.firstName}
-                                        onChange={(e) => setGuestForm({ ...guestForm, firstName: e.target.value })}
-                                        className="px-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm transition"
+                                        onChange={e => setGuestForm({ ...guestForm, firstName: e.target.value })}
                                     />
-                                    <input
-                                        type="text"
+                                    <TextInput
                                         placeholder="Last Name"
                                         value={guestForm.lastName}
-                                        onChange={(e) => setGuestForm({ ...guestForm, lastName: e.target.value })}
-                                        className="px-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm transition"
+                                        onChange={e => setGuestForm({ ...guestForm, lastName: e.target.value })}
                                     />
                                 </div>
-                                <input
+                                <TextInput
                                     type="email"
                                     placeholder="Email address"
                                     value={guestForm.email}
-                                    onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm transition"
+                                    onChange={e => setGuestForm({ ...guestForm, email: e.target.value })}
                                 />
-                                <motion.button
-                                    whileTap={{ scale: 0.98 }}
+                                <button
                                     onClick={handleAddGuest}
                                     disabled={addingMember}
-                                    className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold text-sm hover:from-emerald-700 hover:to-teal-700 transition shadow-lg disabled:opacity-70"
+                                    className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl font-semibold text-sm transition disabled:opacity-50"
                                 >
                                     {addingMember ? 'Adding...' : 'Add Guest'}
-                                </motion.button>
+                                </button>
                             </div>
                         )}
-                    </motion.div>
-                </div>
-            )}
+                    </ModalShell>
+                )}
+            </AnimatePresence>
+
+            {/* ── Add Expense Modal ── */}
+            <AnimatePresence>
+                {showAddExpense && (
+                    <ModalShell onClose={() => setShowAddExpense(false)}>
+                        <ModalHeader title="Add Expense" onClose={() => setShowAddExpense(false)} />
+                        <ExpenseFormFields
+                            form={expenseForm}
+                            onChange={setExpenseForm}
+                            members={members}
+                            customSplits={customSplits}
+                            onCustomSplitsChange={setCustomSplits}
+                        />
+                        <button
+                            onClick={handleAddExpense}
+                            disabled={addingExpense}
+                            className="w-full mt-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl font-semibold text-sm transition disabled:opacity-50"
+                        >
+                            {addingExpense ? 'Adding...' : 'Add Expense'}
+                        </button>
+                    </ModalShell>
+                )}
+            </AnimatePresence>
+
+            {/* ── Expense View / Edit Modal ── */}
+            <AnimatePresence>
+                {selectedExpense && (
+                    <ModalShell onClose={() => { setSelectedExpense(null); setExpenseModalMode('view'); }}>
+                        <ModalHeader
+                            title={expenseModalMode === 'view' ? 'Expense Details' : 'Edit Expense'}
+                            onClose={() => { setSelectedExpense(null); setExpenseModalMode('view'); }}
+                        >
+                            {expenseModalMode === 'view' && isHost && !isArchived && (
+                                <button
+                                    onClick={() => { setEditCustomSplits({}); setExpenseModalMode('edit'); }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400 text-xs font-medium transition"
+                                >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                    Edit
+                                </button>
+                            )}
+                            {expenseModalMode === 'edit' && (
+                                <button
+                                    onClick={() => setExpenseModalMode('view')}
+                                    className="text-xs text-slate-500 hover:text-slate-300 transition px-2"
+                                >
+                                    Cancel
+                                </button>
+                            )}
+                        </ModalHeader>
+
+                        {/* View mode */}
+                        {expenseModalMode === 'view' && (
+                            <div className="space-y-4">
+                                <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/40">
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <p className="font-semibold text-white">{selectedExpense.name}</p>
+                                            <p className="text-xs text-slate-500 mt-1">Paid by {getPayerName(selectedExpense.paid_by)}</p>
+                                            <p className="text-xs text-slate-500">{selectedExpense.split_type === 'equal' ? 'Split equally' : 'Custom split'}</p>
+                                        </div>
+                                        <span className="text-xl font-bold text-emerald-400">
+                                            ₱{Number(selectedExpense.amount).toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs text-slate-500 mb-2">Split breakdown</p>
+                                    <div className="space-y-2">
+                                        {expenseSplits.length === 0 ? (
+                                            <p className="text-xs text-slate-600 text-center py-3">No split data</p>
+                                        ) : expenseSplits.map((split, i) => {
+                                            const memberName = getPayerName(split.user_id);
+                                            const percentage = Math.round((split.amount / selectedExpense.amount) * 100);
+                                            return (
+                                                <div key={i} className="flex items-center gap-3">
+                                                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                                                        {memberName?.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-xs text-slate-300">{memberName}</span>
+                                                            <span className="text-xs font-semibold text-white">₱{Number(split.amount).toFixed(2)}</span>
+                                                        </div>
+                                                        <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${percentage}%` }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Edit mode */}
+                        {expenseModalMode === 'edit' && (
+                            <>
+                                <ExpenseFormFields
+                                    form={editExpenseForm}
+                                    onChange={setEditExpenseForm}
+                                    members={members}
+                                    customSplits={editCustomSplits}
+                                    onCustomSplitsChange={setEditCustomSplits}
+                                />
+                                <button
+                                    onClick={handleSaveExpense}
+                                    disabled={savingExpense}
+                                    className="w-full mt-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl font-semibold text-sm transition disabled:opacity-50"
+                                >
+                                    {savingExpense ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </>
+                        )}
+                    </ModalShell>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
