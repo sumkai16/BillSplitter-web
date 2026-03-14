@@ -21,6 +21,7 @@ const TOAST_STYLE = {
 const EXPENSE_FORM_DEFAULT = { name: '', amount: '', paid_by: '', split_type: 'equal' };
 const GUEST_FORM_DEFAULT = { firstName: '', lastName: '', email: '' };
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_STANDARD_MEMBERS = 3;
 
 // ─── Small reusable UI pieces ─────────────────────────────────────────────────
 
@@ -250,6 +251,7 @@ export default function BillDetail() {
 
     //  Bill & member 
     const [bill, setBill] = useState(null);
+    const [profile, setProfile] = useState(null);
     const [members, setMembers] = useState([]);
     const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -304,6 +306,19 @@ export default function BillDetail() {
             navigate('/login');
         }
     }, []);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        const fetchProfile = async () => {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, account_type')
+                .eq('id', user.id)
+                .single();
+            if (!error) setProfile(data);
+        };
+        fetchProfile();
+    }, [user?.id]);
 
     //  Fetch bill data 
 
@@ -385,9 +400,17 @@ export default function BillDetail() {
         return getMemberName(member);
     };
 
+    const isStandardAccount = (profile?.account_type || 'standard') === 'standard';
+    const hasReachedStandardMemberLimit =
+        isHost && isStandardAccount && members.length >= MAX_STANDARD_MEMBERS;
+
     //  Handlers 
 
     const handleAddRegistered = async (profile) => {
+        if (hasReachedStandardMemberLimit) {
+            toast.error('Standard accounts can only have 3 members per bill');
+            return;
+        }
         setAddingMember(true);
         const { error } = await supabase.from('bill_members').insert({
             bill_id: id, user_id: profile.id, role: 'member', member_type: 'registered',
@@ -405,6 +428,10 @@ export default function BillDetail() {
     };
 
     const handleAddGuest = async () => {
+        if (hasReachedStandardMemberLimit) {
+            toast.error('Standard accounts can only have 3 members per bill');
+            return;
+        }
         const { firstName, lastName, email } = guestForm;
         if (!firstName.trim() || !lastName.trim() || !email.trim())
             return toast.error('All fields are required');
@@ -812,10 +839,21 @@ export default function BillDetail() {
                         >
                             {isHost && !isArchived && (
                                 <DashedAddButton
-                                    onClick={() => setShowAddMember(true)}
+                                    onClick={() => {
+                                        if (hasReachedStandardMemberLimit) {
+                                            toast.error('Standard accounts can only have 3 members per bill');
+                                            return;
+                                        }
+                                        setShowAddMember(true);
+                                    }}
                                     icon={UserPlus}
                                     label="Add Member"
                                 />
+                            )}
+                            {hasReachedStandardMemberLimit && (
+                                <p className="text-xs text-amber-400 mb-3">
+                                    Standard accounts can have up to {MAX_STANDARD_MEMBERS} members per bill.
+                                </p>
                             )}
 
                             <div className="space-y-2">
@@ -884,6 +922,11 @@ export default function BillDetail() {
 
                         {memberType === 'registered' && (
                             <div className="space-y-3">
+                                {hasReachedStandardMemberLimit && (
+                                    <p className="text-xs text-amber-400 text-center py-2">
+                                        Member limit reached for Standard accounts.
+                                    </p>
+                                )}
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
                                     <input
@@ -891,6 +934,7 @@ export default function BillDetail() {
                                         placeholder="Search by username..."
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
+                                        disabled={hasReachedStandardMemberLimit}
                                         className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 text-sm"
                                     />
                                 </div>
@@ -905,7 +949,7 @@ export default function BillDetail() {
                                                 </div>
                                                 <button
                                                     onClick={() => handleAddRegistered(profile)}
-                                                    disabled={addingMember}
+                                                    disabled={addingMember || hasReachedStandardMemberLimit}
                                                     className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-950 hover:bg-emerald-500 text-emerald-400 hover:text-black transition"
                                                 >
                                                     <Check className="w-4 h-4" />
@@ -922,16 +966,23 @@ export default function BillDetail() {
 
                         {memberType === 'guest' && (
                             <div className="space-y-3">
+                                {hasReachedStandardMemberLimit && (
+                                    <p className="text-xs text-amber-400 text-center py-2">
+                                        Member limit reached for Standard accounts.
+                                    </p>
+                                )}
                                 <div className="grid grid-cols-2 gap-2.5">
                                     <TextInput
                                         placeholder="First Name"
                                         value={guestForm.firstName}
                                         onChange={e => setGuestForm({ ...guestForm, firstName: e.target.value })}
+                                        disabled={hasReachedStandardMemberLimit}
                                     />
                                     <TextInput
                                         placeholder="Last Name"
                                         value={guestForm.lastName}
                                         onChange={e => setGuestForm({ ...guestForm, lastName: e.target.value })}
+                                        disabled={hasReachedStandardMemberLimit}
                                     />
                                 </div>
                                 <TextInput
@@ -939,10 +990,11 @@ export default function BillDetail() {
                                     placeholder="Email address"
                                     value={guestForm.email}
                                     onChange={e => setGuestForm({ ...guestForm, email: e.target.value })}
+                                    disabled={hasReachedStandardMemberLimit}
                                 />
                                 <button
                                     onClick={handleAddGuest}
-                                    disabled={addingMember}
+                                    disabled={addingMember || hasReachedStandardMemberLimit}
                                     className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl font-semibold text-sm transition disabled:opacity-50"
                                 >
                                     {addingMember ? 'Adding...' : 'Add Guest'}
