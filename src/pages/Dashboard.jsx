@@ -27,6 +27,8 @@ export default function Dashboard() {
   const [billSearch, setBillSearch] = useState("");
   const [billStatus, setBillStatus] = useState("all");
   const [billSort, setBillSort] = useState("newest");
+  const [activeMembers, setActiveMembers] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
 
   const navigate = useNavigate();
 
@@ -55,6 +57,40 @@ export default function Dashboard() {
     fetchBills();
     fetchProfile();
   }, [user.id]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!bills.length) {
+        setActiveMembers(0);
+        setTotalExpenses(0);
+        return;
+      }
+
+      const billIds = bills.map((bill) => bill.id);
+
+      const [{ data: membersData, error: membersError }, { data: expenseData, error: expenseError }] =
+        await Promise.all([
+          supabase.from("bill_members").select("user_id, guest_id").in("bill_id", billIds),
+          supabase.from("expenses").select("amount").in("bill_id", billIds),
+        ]);
+
+      if (!membersError) {
+        const uniqueMembers = new Set(
+          (membersData || [])
+            .map((member) => (member.user_id ? `u:${member.user_id}` : member.guest_id ? `g:${member.guest_id}` : null))
+            .filter(Boolean)
+        );
+        setActiveMembers(uniqueMembers.size);
+      }
+
+      if (!expenseError) {
+        const total = (expenseData || []).reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+        setTotalExpenses(total);
+      }
+    };
+
+    fetchStats();
+  }, [bills]);
 
   const badge = accountBadge[profile?.account_type] || accountBadge.standard;
 
@@ -189,8 +225,12 @@ export default function Dashboard() {
               className="grid grid-cols-1 md:grid-cols-3 gap-6"
             >
               <StatCard icon={Receipt} label="Total Bills" value={bills.length} />
-              <StatCard icon={Users} label="Active Members" value="" />
-              <StatCard icon={Wallet} label="Total Expenses" value="" />
+              <StatCard icon={Users} label="Active Members" value={activeMembers} />
+              <StatCard
+                icon={Wallet}
+                label="Total Expenses"
+                value={`₱${Number(totalExpenses).toFixed(2)}`}
+              />
             </motion.div>
 
             {/* Account Details */}
