@@ -9,8 +9,11 @@ import {
     ChevronRight, Plus, CreditCard, Pencil
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import { useLimits } from "../hooks/useLimits";
+import UpgradeModal from "../components/UpgradeModal";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+
+//  Constants 
 
 const SPLIT_TOLERANCE = 0.01; // allow ₱0.01 rounding diff in custom splits
 
@@ -22,7 +25,7 @@ const EXPENSE_FORM_DEFAULT = { name: '', amount: '', paid_by: '', split_type: 'e
 const GUEST_FORM_DEFAULT = { firstName: '', lastName: '', email: '' };
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// ─── Small reusable UI pieces ─────────────────────────────────────────────────
+//  Small reusable UI pieces 
 
 function Spinner() {
     return (
@@ -130,7 +133,7 @@ function AmountInput({ value, onChange, placeholder = "0.00" }) {
     );
 }
 
-// ─── Custom Split Rows (shared between Add and Edit modals) ───────────────────
+//  Custom Split Rows (shared between Add and Edit modals) 
 
 function CustomSplitRows({ members, splits, onChange, expenseAmount }) {
     const total = Object.values(splits).reduce((sum, v) => sum + Number(v || 0), 0);
@@ -175,7 +178,7 @@ function CustomSplitRows({ members, splits, onChange, expenseAmount }) {
     );
 }
 
-// ─── Expense Form Fields (shared between Add and Edit modals) ─────────────────
+//  Expense Form Fields (shared between Add and Edit modals) 
 
 function ExpenseFormFields({ form, onChange, members, customSplits, onCustomSplitsChange }) {
     const SPLIT_OPTIONS = [
@@ -225,7 +228,7 @@ function ExpenseFormFields({ form, onChange, members, customSplits, onCustomSpli
     );
 }
 
-// ─── Validation helpers ───────────────────────────────────────────────────────
+//  Validation helpers 
 
 function validateExpenseForm(form, customSplits) {
     if (!form.name.trim()) return 'Expense name is required';
@@ -241,7 +244,7 @@ function validateExpenseForm(form, customSplits) {
     return null; // valid
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+//  Main Component 
 
 export default function BillDetail() {
     const { id } = useParams();
@@ -288,8 +291,10 @@ export default function BillDetail() {
     const [expenseSplits, setExpenseSplits] = useState([]);
     const [savingExpense, setSavingExpense] = useState(false);
 
+    // Limits
+    const { canAddMember, memberLimit } = useLimits(user?.id, members.length);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     //  Guest session check 
-
     useEffect(() => {
         const stored = localStorage.getItem('guest_session');
         if (stored) {
@@ -388,6 +393,10 @@ export default function BillDetail() {
     //  Handlers 
 
     const handleAddRegistered = async (profile) => {
+        if (!canAddMember) {
+            setShowUpgradeModal(true);
+            return;
+        }
         setAddingMember(true);
         const { error } = await supabase.from('bill_members').insert({
             bill_id: id, user_id: profile.id, role: 'member', member_type: 'registered',
@@ -405,6 +414,10 @@ export default function BillDetail() {
     };
 
     const handleAddGuest = async () => {
+        if (!canAddMember) {
+            setShowUpgradeModal(true);
+            return;
+        }
         const { firstName, lastName, email } = guestForm;
         if (!firstName.trim() || !lastName.trim() || !email.trim())
             return toast.error('All fields are required');
@@ -812,9 +825,15 @@ export default function BillDetail() {
                         >
                             {isHost && !isArchived && (
                                 <DashedAddButton
-                                    onClick={() => setShowAddMember(true)}
+                                    onClick={() => {
+                                        if (!canAddMember) {
+                                            setShowUpgradeModal(true);
+                                            return;
+                                        }
+                                        setShowAddMember(true);
+                                    }}
                                     icon={UserPlus}
-                                    label="Add Member"
+                                    label={`Add Member${!canAddMember ? ` (${memberLimit}/${memberLimit})` : ''}`}
                                 />
                             )}
 
@@ -1071,6 +1090,13 @@ export default function BillDetail() {
                     </ModalShell>
                 )}
             </AnimatePresence>
+            <UpgradeModal
+                open={showUpgradeModal}
+                onClose={() => setShowUpgradeModal(false)}
+                limitType="members"
+                current={members.length}
+                limit={memberLimit}
+            />
         </div>
     );
 }
