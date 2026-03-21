@@ -4,6 +4,10 @@ import { motion } from "framer-motion";
 import { Lock, ArrowRight } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { supabase } from "../lib/supabase";
+import {
+    getPasswordError,
+    getConfirmPasswordError,
+} from "../utils/passwordValidation";
 
 export default function ResetPassword() {
 
@@ -17,23 +21,11 @@ export default function ResetPassword() {
 
         if (!password || !confirmPassword) return "All fields are required";
 
-        if (password.length < 8 || password.length > 16)
-            return "Password must be 8-16 characters";
+        const passwordError = getPasswordError(password);
+        if (passwordError) return passwordError;
 
-        if (!/[A-Z]/.test(password))
-            return "Password needs at least one uppercase letter";
-
-        if (!/[a-z]/.test(password))
-            return "Password needs at least one lowercase letter";
-
-        if (!/[0-9]/.test(password))
-            return "Password needs at least one number";
-
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password))
-            return "Password needs at least one special character";
-
-        if (password !== confirmPassword)
-            return "Passwords do not match";
+        const confirmError = getConfirmPasswordError(password, confirmPassword);
+        if (confirmError) return confirmError;
 
         return null;
 

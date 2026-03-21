@@ -5,6 +5,10 @@ import { motion } from "framer-motion";
 import { User, Mail, Lock, AtSign, ArrowRight } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { supabase } from "../lib/supabase";
+import {
+  getPasswordError,
+  getConfirmPasswordError,
+} from "../utils/passwordValidation";
 
 //  Constants 
 
@@ -25,7 +29,7 @@ const FORM_DEFAULT = {
 //  Validation helpers 
 
 function getEmailError(value) {
-  if (!value?.trim()) return "";
+  if (!value?.trim()) return "This field is required";
   if (/\s/.test(value)) return "Email cannot contain spaces";
 
   const atCount = (value.match(/@/g) || []).length;
@@ -52,16 +56,10 @@ function getFieldError(name, value, form) {
   }
   if (name === "email") return getEmailError(value);
   if (name === "password") {
-    if (!trimmed) return "Password is required";
-    if (value.length < 8 || value.length > 16) return "Password must be 8–16 characters";
-    if (!/[A-Z]/.test(value)) return "Password needs at least one uppercase letter";
-    if (!/[a-z]/.test(value)) return "Password needs at least one lowercase letter";
-    if (!/[0-9]/.test(value)) return "Password needs at least one number";
-    if (!/[!@#$%^&*(),.?\":{}|<>]/.test(value)) return "Password needs at least one special character";
+    return getPasswordError(value);
   }
   if (name === "confirmPassword") {
-    if (!trimmed) return "Please confirm your password";
-    if (value !== form.password) return "Passwords do not match";
+    return getConfirmPasswordError(form.password, value);
   }
 
   return "";

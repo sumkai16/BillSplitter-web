@@ -100,12 +100,18 @@ function SegmentedControl({ options, value, onChange }) {
       {options.map((opt) => (
         <button
           key={opt.value}
-          onClick={() => onChange(opt.value)}
+          onClick={() => {
+            if (opt.disabled) return;
+            onChange(opt.value);
+          }}
+          disabled={opt.disabled}
+          aria-disabled={opt.disabled}
+          title={opt.disabled ? opt.disabledReason : undefined}
           className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${
             value === opt.value
               ? "bg-slate-700 text-white"
               : "text-slate-500 hover:text-slate-300"
-          }`}
+          } ${opt.disabled ? "cursor-not-allowed opacity-50 hover:text-slate-500" : ""}`}
         >
           {opt.label}
         </button>
@@ -228,9 +234,23 @@ function ExpenseFormFields({
   customSplits,
   onCustomSplitsChange,
 }) {
+  const isCustomDisabled = members.length < 3;
+
+  useEffect(() => {
+    if (isCustomDisabled && form.split_type === "custom") {
+      onChange({ ...form, split_type: "equal" });
+      onCustomSplitsChange({});
+    }
+  }, [isCustomDisabled, form.split_type, form, onChange, onCustomSplitsChange]);
+
   const SPLIT_OPTIONS = [
     { value: "equal", label: "Split equally" },
-    { value: "custom", label: "Custom split" },
+    {
+      value: "custom",
+      label: "Custom split",
+      disabled: isCustomDisabled,
+      disabledReason: "Custom split needs at least 3 members",
+    },
   ];
 
   return (
@@ -269,6 +289,11 @@ function ExpenseFormFields({
         value={form.split_type}
         onChange={(val) => onChange({ ...form, split_type: val })}
       />
+      {isCustomDisabled && (
+        <p className="text-[11px] text-slate-500">
+          Custom split is available once the bill has at least 3 members.
+        </p>
+      )}
       {form.split_type === "custom" && (
         <CustomSplitRows
           members={members}
@@ -283,12 +308,13 @@ function ExpenseFormFields({
 
 //  Validation helpers
 
-function validateExpenseForm(form, customSplits) {
+function validateExpenseForm(form, customSplits, membersCount) {
   if (!form.name.trim()) return "Expense name is required";
   if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0)
     return "Enter a valid amount";
   if (!form.paid_by) return "Select who paid";
   if (form.split_type === "custom") {
+    if (membersCount < 3) return "Custom split requires at least 3 members";
     const total = Object.values(customSplits).reduce(
       (sum, v) => sum + Number(v || 0),
       0,
@@ -555,11 +581,46 @@ export default function BillDetail() {
     }
   };
 
-  const handleRemoveMember = async (memberId) => {
+  const handleRemoveMember = async (member) => {
+    const memberKey = member.user_id || member.guest_id;
+    if (!memberKey) {
+      toast.error("Unable to remove this member");
+      return;
+    }
+
+    const { data: paidExpenses, error: paidError } = await supabase
+      .from("expenses")
+      .select("id")
+      .eq("bill_id", id)
+      .eq("paid_by", memberKey)
+      .limit(1);
+    if (paidError) {
+      console.error("[handleRemoveMember] paid check error:", paidError);
+      toast.error("Failed to verify member expenses");
+      return;
+    }
+
+    const { data: splitExpenses, error: splitError } = await supabase
+      .from("expense_splits")
+      .select("id, expenses!inner(bill_id)")
+      .eq("user_id", memberKey)
+      .eq("expenses.bill_id", id)
+      .limit(1);
+    if (splitError) {
+      console.error("[handleRemoveMember] split check error:", splitError);
+      toast.error("Failed to verify member expenses");
+      return;
+    }
+
+    if ((paidExpenses || []).length > 0 || (splitExpenses || []).length > 0) {
+      toast.error("Cannot remove a member with existing expenses");
+      return;
+    }
+
     const { error } = await supabase
       .from("bill_members")
       .delete()
-      .eq("id", memberId);
+      .eq("id", member.id);
     if (error) {
       console.error("[handleRemoveMember]", error);
       return toast.error("Failed to remove");
@@ -626,7 +687,11 @@ export default function BillDetail() {
   };
 
   const handleAddExpense = async () => {
-    const validationError = validateExpenseForm(expenseForm, customSplits);
+    const validationError = validateExpenseForm(
+      expenseForm,
+      customSplits,
+      members.length,
+    );
     if (validationError) return toast.error(validationError);
 
     setAddingExpense(true);
@@ -687,6 +752,7 @@ export default function BillDetail() {
     const validationError = validateExpenseForm(
       editExpenseForm,
       editCustomSplits,
+      members.length,
     );
     if (validationError) return toast.error(validationError);
 
@@ -1036,7 +1102,7 @@ export default function BillDetail() {
                         </span>
                         {isHost && member.role !== "host" && !isArchived && (
                           <button
-                            onClick={() => handleRemoveMember(member.id)}
+                            onClick={() => handleRemoveMember(member)}
                             className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-950 text-slate-600 hover:text-red-400 transition"
                           >
                             <X className="w-3.5 h-3.5" />

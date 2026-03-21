@@ -3,8 +3,14 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { motion } from "framer-motion";
 import {
-  LogOut, User, Mail, AtSign, Shield, Calendar,
-  Receipt, Users, Wallet, Zap,
+  Mail,
+  AtSign,
+  Shield,
+  Calendar,
+  Receipt,
+  Users,
+  Wallet,
+  Zap,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -24,7 +30,7 @@ const ACCOUNT_BADGE = {
 
 //  Sub-components 
 
-function StatCard({ icon: Icon, label, value }) {
+function StatCard({ icon: Icon, label, value, delta, trend = "up" }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -32,14 +38,62 @@ function StatCard({ icon: Icon, label, value }) {
       whileHover={{ y: -6, scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6 shadow-lg hover:shadow-emerald-500/10 transition"
+      className="relative overflow-hidden rounded-3xl border border-slate-800/70 bg-slate-950/70 p-6 shadow-xl shadow-slate-950/40 backdrop-blur-xl transition hover:border-emerald-500/30"
     >
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/80 via-cyan-400/60 to-transparent" />
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">{label}</p>
-        <Icon className="w-5 h-5 text-emerald-500" />
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+          {label}
+        </p>
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900/70 border border-slate-800">
+          <Icon className="h-5 w-5 text-emerald-400" />
+        </div>
       </div>
-      <h3 className="text-2xl font-bold text-white mt-2">{value}</h3>
+      <div className="mt-4 flex items-end justify-between">
+        <h3 className="text-3xl font-semibold text-white">{value}</h3>
+        {delta && (
+          <span
+            className={`text-xs font-semibold ${
+              trend === "up" ? "text-emerald-400" : "text-rose-400"
+            }`}
+          >
+            {trend === "up" ? "▲" : "▼"} {delta}
+          </span>
+        )}
+      </div>
+      <div className="mt-4 flex gap-1">
+        {[6, 10, 7, 14, 9, 12, 8].map((h, idx) => (
+          <div
+            key={`${label}-${idx}`}
+            className="flex-1 rounded-full bg-slate-800/80"
+          >
+            <div
+              className="rounded-full bg-emerald-500/70"
+              style={{ height: `${h}px` }}
+            />
+          </div>
+        ))}
+      </div>
     </motion.div>
+  );
+}
+
+function SectionCard({ title, subtitle, action, children, className = "" }) {
+  return (
+    <div
+      className={`rounded-3xl border border-slate-800/70 bg-slate-950/70 p-6 shadow-xl shadow-slate-950/40 backdrop-blur-xl ${className}`}
+    >
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-base font-semibold text-white">{title}</h3>
+          {subtitle && (
+            <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
+          )}
+        </div>
+        {action}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -247,6 +301,15 @@ export default function Dashboard() {
   //  Derived values 
 
   const badge = ACCOUNT_BADGE[profile?.account_type] || ACCOUNT_BADGE.standard;
+  const fullName = `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim();
+  const initials = fullName
+    ? fullName
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0]?.toUpperCase())
+        .join("")
+    : "U";
 
   const filteredBills = useMemo(() => {
     const search = billSearch.trim().toLowerCase();
@@ -264,236 +327,419 @@ export default function Dashboard() {
   // Render 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-black text-white">
+    <div className="relative min-h-screen bg-slate-950 text-white">
       <Toaster position="top-center" toastOptions={TOAST_STYLE} />
 
-      {/* Navbar */}
-      <div className="flex justify-between items-center px-8 py-5">
-        <img
-          src="public/hlogo.png"
-          alt="Logo"
-          className="w-40 h-auto object-contain transition-transform duration-300 hover:scale-110 cursor-pointer"
-          onClick={() => navigate("/dashboard")}
-        />
-        <div className="flex items-center gap-6">
-          <span className="text-lg text-slate-300 font-medium">{profile?.first_name}</span>
-          <button
-            onClick={signOut}
-            className="flex items-center gap-2 text-red-500 hover:text-red-400 transition text-sm font-semibold"
-          >
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
-        </div>
+      {/* Ambient Background */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="absolute top-32 right-0 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <>
-            {/* Welcome Banner */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-3xl p-8 text-white shadow-xl"
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-emerald-100 text-sm mb-1">Welcome back,</p>
-                  <h2 className="text-2xl font-bold">
-                    {profile?.first_name} {profile?.last_name}
-                  </h2>
-                  <p className="text-emerald-200 text-sm mt-1">@{profile?.username}</p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${badge.color}`}>
-                    {badge.label}
-                  </span>
-                  {/* Upgrade button for standard users */}
-                  {isStandard && (
-                    <button
-                      onClick={() => setShowUpgradeModal(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-semibold transition"
-                    >
-                      <Zap className="w-3 h-3" />
-                      Upgrade to Premium
-                    </button>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Stat Cards */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
-            >
-              <StatCard icon={Receipt} label="Total Bills" value={bills.length} />
-              <StatCard icon={Users} label="Active Members" value={activeMembers} />
-              <StatCard
-                icon={Wallet}
-                label="Total Expenses"
-                value={`₱${Number(totalExpenses).toFixed(2)}`}
-              />
-            </motion.div>
-
-            {/* Account Details */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              onClick={() => navigate("/profile")}
-              className="cursor-pointer transition-all duration-300 hover:scale-[1.02] bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 hover:border-emerald-500/40 p-6"
-            >
-              <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-                <User className="w-4 h-4 text-emerald-500" />
-                Account Details
-              </h3>
-              <div className="space-y-3">
-                {[
-                  { icon: Mail, label: "Email", value: profile?.email },
-                  { icon: AtSign, label: "Nickname", value: profile?.nickname },
-                  { icon: Shield, label: "Account Type", value: profile?.account_type },
-                  {
-                    icon: Calendar,
-                    label: "Member Since",
-                    value: profile?.created_at
-                      ? new Date(profile.created_at).toLocaleDateString("en-US", {
-                        year: "numeric", month: "long", day: "numeric",
-                      })
-                      : "",
-                  },
-                ].map(({ icon: Icon, label, value }) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0"
-                  >
-                    <div className="flex items-center gap-2 text-slate-400 text-sm">
-                      <Icon className="w-4 h-4" />
-                      {label}
-                    </div>
-                    <span className="text-white text-sm font-medium">
-                      {value
-                        ? value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
-                        : "—"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* My Bills */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-white flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-emerald-500" />
-                  My Bills
-                </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => navigate("/archive")}
-                    className="px-4 py-2 border border-slate-700 hover:border-emerald-500/40 text-slate-400 hover:text-emerald-400 rounded-xl text-sm font-semibold transition"
-                  >
-                    📦 Archive
-                  </button>
-                  <button
-                    onClick={handleOpenCreateBill}
-                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${canCreateBill
-                      ? 'bg-emerald-500 hover:bg-emerald-400 text-black'
-                      : 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                      }`}
-                  >
-                    + New Bill
-                  </button>
-                </div>
-              </div>
-
-              {/* Usage bar — standard users only */}
-              {isStandard && (
-                <div className="mb-4">
-                  <BillUsageBar
-                    billsThisMonth={billsThisMonth}
-                    billLimit={billLimit}
-                  />
-                </div>
-              )}
-
-              {/* Search + Filters */}
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-5">
-                <input
-                  type="text"
-                  placeholder="Search by bill name"
-                  value={billSearch}
-                  onChange={e => setBillSearch(e.target.value)}
-                  className="w-full md:max-w-xs px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition"
-                />
-                <select
-                  value={billSort}
-                  onChange={e => setBillSort(e.target.value)}
-                  className="px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+      <div className="relative flex min-h-screen">
+        {/* Sidebar */}
+        <aside className="hidden w-64 flex-col border-r border-slate-900/80 bg-slate-950/60 px-6 py-8 lg:flex">
+          <img
+            src="public/hlogo.png"
+            alt="Logo"
+            className="w-36 cursor-pointer object-contain transition-transform duration-300 hover:scale-105"
+            onClick={() => navigate("/dashboard")}
+          />
+          <div className="mt-10 space-y-6 text-sm text-slate-400">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-600">
+                Overview
+              </p>
+              <div className="mt-3 space-y-2">
+                <button className="w-full rounded-xl bg-emerald-500/10 px-4 py-2 text-left text-emerald-300">
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => navigate("/archive")}
+                  className="w-full rounded-xl px-4 py-2 text-left hover:bg-slate-900/60"
                 >
-                  <option value="newest">Newest to Oldest</option>
-                  <option value="oldest">Oldest to Newest</option>
-                </select>
+                  Archive
+                </button>
+                <button
+                  onClick={() => navigate("/profile")}
+                  className="w-full rounded-xl px-4 py-2 text-left hover:bg-slate-900/60"
+                >
+                  Profile
+                </button>
               </div>
-
-              {/* Bills List */}
-              {filteredBills.length === 0 ? (
-                <div className="text-center py-10">
-                  <span className="text-4xl">🧾</span>
-                  <p className="text-slate-400 text-sm mt-3">
-                    No bills yet. Create one to get started!
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-600">
+                Actions
+              </p>
+              <div className="mt-3 space-y-2">
+                <button
+                  onClick={handleOpenCreateBill}
+                  className={`w-full rounded-xl px-4 py-2 text-left ${
+                    canCreateBill
+                      ? "bg-emerald-500 text-black"
+                      : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                  }`}
+                >
+                  + New Bill
+                </button>
+                <button
+                  onClick={signOut}
+                  className="w-full rounded-xl px-4 py-2 text-left text-rose-400 hover:bg-rose-500/10"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-900/80 bg-slate-900/40 p-4">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                Quick Stats
+              </p>
+              <div className="mt-4 space-y-3 text-sm text-slate-300">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Active bills</span>
+                  <span className="font-semibold text-white">{bills.length}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Members</span>
+                  <span className="font-semibold text-white">{activeMembers}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Expenses</span>
+                  <span className="font-semibold text-white">
+                    ₱{Number(totalExpenses).toFixed(0)}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-emerald-500/70"
+                  style={{
+                    width: `${Math.min(
+                      (billsThisMonth / (billLimit || 1)) * 100,
+                      100,
+                    )}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                {billsThisMonth} / {billLimit} bills this month
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-900/80 bg-slate-900/40 p-4">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                Focus Today
+              </p>
+              <div className="mt-4 space-y-3 text-sm text-slate-300">
+                <div className="rounded-xl border border-slate-800/80 bg-slate-900/50 p-3">
+                  <p className="text-xs text-slate-500">Top Priority</p>
+                  <p className="mt-1 text-sm font-semibold text-white">
+                    Settle balances from the last bill
                   </p>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredBills.map(bill => (
-                    <div
-                      key={bill.id}
-                      onClick={() => navigate(`/bills/${bill.id}`)}
-                      className="flex items-center justify-between p-4 rounded-2xl border border-slate-800 hover:border-emerald-500/40 hover:bg-slate-800 transition-all cursor-pointer"
-                    >
-                      <div>
-                        <p className="font-semibold text-white text-sm">{bill.name}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Code:{" "}
-                          <span className="font-mono font-bold tracking-wider">
-                            {bill.code}
-                          </span>
+                <div className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-slate-900/50 px-3 py-2">
+                  <span className="text-xs text-slate-500">Next review</span>
+                  <span className="text-xs font-semibold text-white">
+                    Today
+                  </span>
+                </div>
+                <button
+                  onClick={handleOpenCreateBill}
+                  className={`w-full rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                    canCreateBill
+                      ? "bg-emerald-500 text-black hover:bg-emerald-400"
+                      : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                  }`}
+                >
+                  Start a new bill
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main */}
+        <main className="flex-1 px-6 py-8 lg:px-10">
+          <div className="flex flex-col gap-6">
+            {/* Top Bar */}
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+                  Dashboard
+                </p>
+                <h1 className="mt-2 text-3xl font-semibold text-white">
+                  Analytics Overview
+                </h1>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search bills, members, expenses..."
+                    value={billSearch}
+                    onChange={e => setBillSearch(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:w-72"
+                  />
+                </div>
+                <button
+                  onClick={handleOpenCreateBill}
+                  className={`rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
+                    canCreateBill
+                      ? "bg-emerald-500 text-black hover:bg-emerald-400"
+                      : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                  }`}
+                >
+                  + Create Bill
+                </button>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20 text-sm font-semibold text-emerald-200">
+                    {initials}
+                  </div>
+                  <div className="text-sm">
+                    <p className="font-medium text-white">
+                      {fullName || "User"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {profile?.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-20">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-400 border-t-transparent" />
+              </div>
+            ) : (
+              <>
+                {/* KPI Row */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+                  <StatCard
+                    icon={Receipt}
+                    label="Total Bills"
+                    value={bills.length}
+                    delta={`${billsThisMonth} this month`}
+                  />
+                  <StatCard
+                    icon={Users}
+                    label="Active Members"
+                    value={activeMembers}
+                    delta="Across bills"
+                  />
+                  <StatCard
+                    icon={Wallet}
+                    label="Total Expenses"
+                    value={`₱${Number(totalExpenses).toFixed(2)}`}
+                    delta="All time"
+                  />
+                  <StatCard
+                    icon={Calendar}
+                    label="Bills This Month"
+                    value={billsThisMonth}
+                    delta={`Limit ${billLimit}`}
+                  />
+                </div>
+
+                {/* Mid Grid */}
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                  <SectionCard
+                    title="Bills Overview"
+                    subtitle="Monthly activity snapshot"
+                    className="xl:col-span-2"
+                    action={
+                      <select
+                        value={billSort}
+                        onChange={e => setBillSort(e.target.value)}
+                        className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-300 focus:outline-none"
+                      >
+                        <option value="newest">Newest to Oldest</option>
+                        <option value="oldest">Oldest to Newest</option>
+                      </select>
+                    }
+                  >
+                    <div className="flex items-end justify-between gap-2 rounded-2xl border border-slate-800/60 bg-slate-900/40 px-4 py-6">
+                      {[12, 18, 10, 26, 16, 30, 22, 34, 28, 40, 32, 38].map(
+                        (height, idx) => (
+                          <div
+                            key={`bar-${idx}`}
+                            className="flex flex-1 flex-col items-center gap-2"
+                          >
+                            <div
+                              className="w-full rounded-full bg-gradient-to-t from-emerald-500/70 via-cyan-400/60 to-emerald-300/70"
+                              style={{ height: `${height * 2}px` }}
+                            />
+                            <span className="text-[10px] text-slate-500">
+                              {idx + 1}
+                            </span>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-500">
+                      <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-emerald-300">
+                        Active: {bills.length}
+                      </span>
+                      <span className="rounded-full bg-slate-800 px-3 py-1">
+                        Members: {activeMembers}
+                      </span>
+                      <span className="rounded-full bg-slate-800 px-3 py-1">
+                        Expenses: ₱{Number(totalExpenses).toFixed(2)}
+                      </span>
+                    </div>
+                  </SectionCard>
+
+                  <SectionCard
+                    title="Account Snapshot"
+                    subtitle="Profile and usage details"
+                    action={
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badge.color}`}>
+                        {badge.label}
+                      </span>
+                    }
+                  >
+                    <div className="space-y-4 text-sm text-slate-300">
+                      <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                          Signed in as
+                        </p>
+                        <p className="mt-2 text-base font-semibold text-white">
+                          {fullName || "User"}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          @{profile?.username || "username"}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${bill.status === "active"
-                          ? "bg-emerald-900/40 text-emerald-400"
-                          : "bg-gray-800 text-gray-400"
-                          }`}>
-                          {bill.status}
-                        </span>
-                        <button
-                          onClick={e => handleArchiveBill(e, bill.id)}
-                          className="p-2 rounded-xl hover:bg-slate-700 text-slate-400 hover:text-amber-400 transition"
-                          title="Archive bill"
-                        >
-                          📦
-                        </button>
+                      <div className="space-y-3">
+                        {[
+                          { icon: Mail, label: "Email", value: profile?.email },
+                          { icon: AtSign, label: "Nickname", value: profile?.nickname },
+                          { icon: Shield, label: "Account Type", value: profile?.account_type },
+                        ].map(({ icon: Icon, label, value }) => (
+                          <div key={label} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-slate-500">
+                              <Icon className="h-4 w-4" />
+                              {label}
+                            </div>
+                            <span className="font-medium text-white">
+                              {value ? value : "—"}
+                            </span>
+                          </div>
+                        ))}
                       </div>
+                      {isStandard && (
+                        <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-4">
+                          <p className="text-xs text-slate-500">Monthly usage</p>
+                          <div className="mt-3">
+                            <BillUsageBar
+                              billsThisMonth={billsThisMonth}
+                              billLimit={billLimit}
+                            />
+                          </div>
+                          <button
+                            onClick={() => setShowUpgradeModal(true)}
+                            className="mt-4 w-full rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/20"
+                          >
+                            Upgrade to Premium
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  </SectionCard>
                 </div>
-              )}
-            </motion.div>
-          </>
-        )}
+
+                {/* Recent Bills */}
+                <SectionCard
+                  title="Recent Bills"
+                  subtitle="Manage and monitor your active bills"
+                  action={
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => navigate("/archive")}
+                        className="rounded-xl border border-slate-800 px-3 py-2 text-xs text-slate-400 transition hover:border-emerald-500/40 hover:text-emerald-300"
+                      >
+                        View Archive
+                      </button>
+                      <button
+                        onClick={handleOpenCreateBill}
+                        className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                          canCreateBill
+                            ? "bg-emerald-500 text-black hover:bg-emerald-400"
+                            : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                        }`}
+                      >
+                        + New Bill
+                      </button>
+                    </div>
+                  }
+                >
+                  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="text-xs text-slate-500">
+                      Showing {filteredBills.length} active bills
+                    </div>
+                    <select
+                      value={billSort}
+                      onChange={e => setBillSort(e.target.value)}
+                      className="w-full rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-300 focus:outline-none md:w-52"
+                    >
+                      <option value="newest">Newest to Oldest</option>
+                      <option value="oldest">Oldest to Newest</option>
+                    </select>
+                  </div>
+
+                  {filteredBills.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-800/80 p-10 text-center">
+                      <p className="text-sm text-slate-400">
+                        No bills yet. Create one to start tracking expenses.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredBills.map(bill => (
+                        <div
+                          key={bill.id}
+                          onClick={() => navigate(`/bills/${bill.id}`)}
+                          className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800/70 bg-slate-900/40 p-4 transition hover:border-emerald-500/40 hover:bg-slate-900/70"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-white">
+                              {bill.name}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Code:{" "}
+                              <span className="font-mono font-semibold text-slate-300">
+                                {bill.code}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                bill.status === "active"
+                                  ? "bg-emerald-500/10 text-emerald-300"
+                                  : "bg-slate-800 text-slate-400"
+                              }`}
+                            >
+                              {bill.status}
+                            </span>
+                            <button
+                              onClick={e => handleArchiveBill(e, bill.id)}
+                              className="rounded-xl border border-slate-800 px-3 py-2 text-xs text-slate-400 transition hover:border-amber-400/40 hover:text-amber-300"
+                              title="Archive bill"
+                            >
+                              Archive
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </SectionCard>
+              </>
+            )}
+          </div>
+        </main>
       </div>
 
       {/* Create Bill Modal */}

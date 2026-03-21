@@ -57,7 +57,7 @@ export default function Login() {
 
     if (!email || !password) {
       if (!password) setPasswordError("Password is required");
-      if (!email) setEmailError("Email is required");
+      if (!email) setEmailError("This field is required");
       return;
     }
 
@@ -95,7 +95,10 @@ export default function Login() {
 
     e.preventDefault();
 
-    if (!email) return toast.error("Please enter your email address");
+    if (!email) {
+      setEmailError("This field is required");
+      return toast.error("Please enter your email address");
+    }
 
     const emailValidation = getEmailError(email);
 
