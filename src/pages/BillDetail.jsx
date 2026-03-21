@@ -810,6 +810,10 @@ export default function BillDetail() {
   if (loading) return <Spinner />;
 
   const isArchived = bill.status === "archived";
+  const averagePerMember =
+    members.length > 0 ? totalExpenses / members.length : 0;
+  const averagePerExpense =
+    expenses.length > 0 ? totalExpenses / expenses.length : 0;
 
   const MEMBER_TYPE_OPTIONS = [
     { value: "registered", label: "Registered User" },
@@ -820,305 +824,413 @@ export default function BillDetail() {
     <div className="min-h-screen bg-black text-white">
       <Toaster position="top-center" toastOptions={TOAST_STYLE} />
 
-      {/* ── Top bar ── */}
-      <div className="border-b border-slate-800/60 sticky top-0 z-10 bg-black/80 backdrop-blur-xl">
-        <div className="max-w-2xl mx-auto px-5 py-4 flex items-center gap-3">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 transition text-slate-500 hover:text-white"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
+      {/* Top bar */}
+      <div className="sticky top-0 z-10 border-b border-slate-900/70 bg-black/75 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-800/70 bg-slate-900/60 text-slate-400 hover:text-white hover:border-emerald-500/40 transition"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
 
-          {/* Bill name — inline edit */}
-          <div className="flex-1 min-w-0">
-            {editingBillName ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={billNameInput}
-                  onChange={(e) => setBillNameInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveBillName();
-                    if (e.key === "Escape") setEditingBillName(false);
-                  }}
-                  autoFocus
-                  className="bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-emerald-500 w-40"
-                />
-                <button
-                  onClick={handleSaveBillName}
-                  disabled={savingBillName}
-                  className="w-6 h-6 flex items-center justify-center rounded-md bg-emerald-500 hover:bg-emerald-400 text-black transition disabled:opacity-50"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setEditingBillName(false)}
-                  className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-700 text-slate-400 transition"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <h1 className="font-semibold text-white text-sm truncate">
-                  {bill.name}
-                </h1>
-                {isHost && !isArchived && (
-                  <button
-                    onClick={() => {
-                      setBillNameInput(bill.name);
-                      setEditingBillName(true);
+            {/* Bill name — inline edit */}
+            <div className="min-w-0">
+              {editingBillName ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={billNameInput}
+                    onChange={(e) => setBillNameInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveBillName();
+                      if (e.key === "Escape") setEditingBillName(false);
                     }}
-                    className="w-5 h-5 flex items-center justify-center rounded text-slate-600 hover:text-slate-300 transition flex-shrink-0"
+                    autoFocus
+                    className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 w-48"
+                  />
+                  <button
+                    onClick={handleSaveBillName}
+                    disabled={savingBillName}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black transition disabled:opacity-50"
                   >
-                    <Pencil className="w-3 h-3" />
+                    <Check className="w-4 h-4" />
                   </button>
-                )}
+                  <button
+                    onClick={() => setEditingBillName(false)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-800 text-slate-400 hover:text-white transition"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 min-w-0">
+                  <h1 className="text-base font-semibold text-white truncate">
+                    {bill.name}
+                  </h1>
+                  {isHost && !isArchived && (
+                    <button
+                      onClick={() => {
+                        setBillNameInput(bill.name);
+                        setEditingBillName(true);
+                      }}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-800 text-slate-500 hover:text-emerald-300 transition flex-shrink-0"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>
+                <span className="h-1 w-1 rounded-full bg-slate-700" />
+                <span>Bill ID: {String(id).slice(0, 8)}...</span>
               </div>
-            )}
-            <p className="text-xs text-slate-500">
-              {members.length} member{members.length !== 1 ? "s" : ""}
-            </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isHost && !isArchived && (
               <button
                 onClick={handleArchiveBill}
                 disabled={archiving}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-amber-500/50 text-slate-400 hover:text-amber-400 text-xs font-medium transition disabled:opacity-40"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800 text-slate-300 hover:border-amber-500/50 hover:text-amber-300 text-xs font-medium transition disabled:opacity-40"
               >
-                <Archive className="w-3.5 h-3.5" />
+                <Archive className="w-4 h-4" />
                 {archiving ? "Archiving..." : "Archive"}
               </button>
             )}
             <span
-              className={`text-xs px-2.5 py-1 rounded-full font-medium ${isArchived ? "bg-slate-800 text-slate-400" : "bg-emerald-950 text-emerald-400"}`}
+              className={`text-xs px-3 py-1 rounded-full font-semibold ${isArchived ? "bg-slate-800 text-slate-400" : "bg-emerald-950 text-emerald-400"}`}
             >
               {bill.status}
             </span>
           </div>
         </div>
       </div>
-
-      {/* ── Page content ── */}
-      <div className="max-w-2xl mx-auto px-5 py-6 space-y-4">
+{/* Page content */}
+      <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         {/* Hero summary card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl bg-gradient-to-br from-emerald-950/60 to-slate-900/60 border border-emerald-900/30 p-5"
+          className="rounded-3xl border border-slate-800/70 bg-slate-900/70 p-6 shadow-xl shadow-black/30 backdrop-blur-xl"
         >
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs text-slate-500 mb-1">Total Expenses</p>
-              <p className="text-3xl font-bold text-white tracking-tight">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                Total Expenses
+              </p>
+              <p className="mt-2 text-3xl font-semibold text-white tracking-tight">
                 ₱{totalExpenses.toFixed(2)}
               </p>
-              <p className="text-xs text-slate-500 mt-1">
-                across {expenses.length} expense
-                {expenses.length !== 1 ? "s" : ""}
+              <p className="mt-2 text-xs text-slate-500">
+                across {expenses.length} expense{expenses.length !== 1 ? "s" : ""}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-slate-500 mb-1.5">Invite Code</p>
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-800/70 bg-slate-950/60 px-4 py-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                  Invite Code
+                </p>
+                <p className="mt-1 font-mono text-sm font-semibold text-white tracking-[0.2em]">
+                  {bill.code}
+                </p>
+              </div>
               <button
                 onClick={copyCode}
-                className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 rounded-xl px-3 py-2 transition group"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800/70 bg-slate-900/60 text-slate-400 transition hover:text-emerald-300"
+                title="Copy code"
               >
-                <span className="font-mono font-bold text-sm tracking-widest text-white">
-                  {bill.code}
-                </span>
-                <Copy className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 transition" />
+                <Copy className="h-4 w-4" />
               </button>
             </div>
           </div>
         </motion.div>
 
-        {/* Tabs */}
-        <div className="flex bg-slate-900/50 rounded-xl p-1 border border-slate-800/50">
-          {["expenses", "members"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2 rounded-lg text-xs font-semibold transition capitalize ${
-                activeTab === tab
-                  ? "bg-slate-800 text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-300"
-              }`}
-            >
-              {tab === "expenses"
-                ? `Expenses (${expenses.length})`
-                : `Members (${members.length})`}
-            </button>
-          ))}
-        </div>
-
-        <AnimatePresence mode="wait">
-          {/* Expenses tab */}
-          {activeTab === "expenses" && (
-            <motion.div
-              key="expenses"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15 }}
-            >
-              {isHost && !isArchived && (
-                <DashedAddButton
-                  onClick={() => {
-                    setExpenseForm({
-                      ...EXPENSE_FORM_DEFAULT,
-                      paid_by: user?.id || "",
-                    });
-                    setCustomSplits({});
-                    setShowAddExpense(true);
-                  }}
-                  icon={Plus}
-                  label="Add Expense"
-                />
-              )}
-
-              {expenses.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto mb-3">
-                    <Receipt className="w-5 h-5 text-slate-600" />
-                  </div>
-                  <p className="text-slate-500 text-sm">No expenses yet</p>
-                  <p className="text-slate-600 text-xs mt-1">
-                    Add one to get started
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {expenses.map((expense, i) => (
-                    <motion.div
-                      key={expense.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      onClick={() => handleOpenExpense(expense)}
-                      className="flex items-center gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-slate-700 transition cursor-pointer"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
-                        <CreditCard className="w-4 h-4 text-slate-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">
-                          {expense.name}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {getPayerName(expense.paid_by)} paid ·{" "}
-                          {expense.split_type === "equal"
-                            ? "split equally"
-                            : "custom split"}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-sm font-semibold text-emerald-400">
-                          ₱{Number(expense.amount).toFixed(2)}
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-slate-600" />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* Members tab */}
-          {activeTab === "members" && (
-            <motion.div
-              key="members"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15 }}
-            >
-              {isHost && !isArchived && (
-                <DashedAddButton
-                  onClick={() => setShowAddMember(true)}
-                  icon={UserPlus}
-                  label={`Add Member${!canAddMember ? ` (${memberLimit}/${memberLimit})` : ""}`}
-                />
-              )}
-              {hasReachedStandardMemberLimit && (
-                <p className="text-xs text-amber-400 mb-3">
-                  Standard accounts can have up to {MAX_STANDARD_MEMBERS}{" "}
-                  members per bill.
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          {/* Main column */}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 rounded-2xl border border-slate-800/70 bg-slate-900/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+                  Bill Workspace
                 </p>
+                <p className="mt-1 text-sm text-slate-400">
+                  Track expenses and manage members in one place.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-slate-800/70 bg-slate-950/60 p-1">
+                {["expenses", "members"].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition capitalize ${
+                      activeTab === tab
+                        ? "bg-slate-800 text-white shadow-sm"
+                        : "text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    {tab === "expenses"
+                      ? `Expenses (${expenses.length})`
+                      : `Members (${members.length})`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {/* Expenses tab */}
+              {activeTab === "expenses" && (
+                <motion.div
+                  key="expenses"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="space-y-3"
+                >
+                  {isHost && !isArchived && (
+                    <DashedAddButton
+                      onClick={() => {
+                        setExpenseForm({
+                          ...EXPENSE_FORM_DEFAULT,
+                          paid_by: user?.id || "",
+                        });
+                        setCustomSplits({});
+                        setShowAddExpense(true);
+                      }}
+                      icon={Plus}
+                      label="Add Expense"
+                    />
+                  )}
+
+                  {expenses.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-800/70 bg-slate-950/40 py-16 text-center">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto mb-3">
+                        <Receipt className="w-5 h-5 text-slate-600" />
+                      </div>
+                      <p className="text-slate-500 text-sm">No expenses yet</p>
+                      <p className="text-slate-600 text-xs mt-1">
+                        Add one to get started
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {expenses.map((expense, i) => (
+                        <motion.div
+                          key={expense.id}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          onClick={() => handleOpenExpense(expense)}
+                          className="flex items-center gap-4 rounded-2xl border border-slate-800/70 bg-slate-900/60 p-4 transition hover:border-emerald-500/30 hover:bg-slate-900/80 cursor-pointer"
+                        >
+                          <div className="w-10 h-10 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center flex-shrink-0">
+                            <CreditCard className="w-4 h-4 text-slate-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">
+                              {expense.name}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {getPayerName(expense.paid_by)} paid ·{" "}
+                              {expense.split_type === "equal"
+                                ? "split equally"
+                                : "custom split"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-sm font-semibold text-emerald-400">
+                              ₱{Number(expense.amount).toFixed(2)}
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-slate-600" />
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
               )}
 
-              <div className="space-y-2">
-                {members.map((member, i) => {
-                  const name = getMemberName(member);
-                  const email =
-                    member.member_type === "guest"
-                      ? member.guests?.email
-                      : member.profiles?.email;
-                  const initials = name
-                    ?.split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2);
+              {/* Members tab */}
+              {activeTab === "members" && (
+                <motion.div
+                  key="members"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="space-y-3"
+                >
+                  {isHost && !isArchived && (
+                    <DashedAddButton
+                      onClick={() => setShowAddMember(true)}
+                      icon={UserPlus}
+                      label={`Add Member${!canAddMember ? ` (${memberLimit}/${memberLimit})` : ""}`}
+                    />
+                  )}
+                  {hasReachedStandardMemberLimit && (
+                    <p className="text-xs text-amber-400 mb-3">
+                      Standard accounts can have up to {MAX_STANDARD_MEMBERS}{" "}
+                      members per bill.
+                    </p>
+                  )}
 
-                  return (
-                    <motion.div
-                      key={member.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="flex items-center gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-slate-700 transition"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                        {initials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">
-                          {name}
-                        </p>
-                        <p className="text-xs text-slate-500 truncate">
-                          {email}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            member.role === "host"
-                              ? "bg-emerald-950 text-emerald-400"
-                              : member.member_type === "guest"
-                                ? "bg-slate-800 text-slate-400"
-                                : "bg-teal-950 text-teal-400"
-                          }`}
+                  <div className="space-y-3">
+                    {members.map((member, i) => {
+                      const name = getMemberName(member);
+                      const email =
+                        member.member_type === "guest"
+                          ? member.guests?.email
+                          : member.profiles?.email;
+                      const initials = name
+                        ?.split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2);
+
+                      return (
+                        <motion.div
+                          key={member.id}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          className="flex items-center gap-3 rounded-2xl border border-slate-800/70 bg-slate-900/60 p-4 transition hover:border-slate-700"
                         >
-                          {member.role === "host"
-                            ? "host"
-                            : member.member_type === "guest"
-                              ? "guest"
-                              : "member"}
-                        </span>
-                        {isHost && member.role !== "host" && !isArchived && (
-                          <button
-                            onClick={() => handleRemoveMember(member)}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-950 text-slate-600 hover:text-red-400 transition"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+                          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                            {initials}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">
+                              {name}
+                            </p>
+                            <p className="text-xs text-slate-500 truncate">
+                              {email}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                member.role === "host"
+                                  ? "bg-emerald-950 text-emerald-400"
+                                  : member.member_type === "guest"
+                                    ? "bg-slate-800 text-slate-400"
+                                    : "bg-teal-950 text-teal-400"
+                              }`}
+                            >
+                              {member.role === "host"
+                                ? "host"
+                                : member.member_type === "guest"
+                                  ? "guest"
+                                  : "member"}
+                            </span>
+                            {isHost && member.role !== "host" && !isArchived && (
+                              <button
+                                onClick={() => handleRemoveMember(member)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-950 text-slate-600 hover:text-red-400 transition"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-      {/* ── Add Member Modal ── */}
+          {/* Side column */}
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-800/70 bg-slate-900/60 p-4">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+                Bill Insights
+              </p>
+              <div className="mt-4 space-y-3 text-sm text-slate-300">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Members</span>
+                  <span className="font-semibold text-white">
+                    {members.length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Expenses</span>
+                  <span className="font-semibold text-white">
+                    {expenses.length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Avg per member</span>
+                  <span className="font-semibold text-white">
+                    ₱{averagePerMember.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Avg per expense</span>
+                  <span className="font-semibold text-white">
+                    ₱{averagePerExpense.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Status</span>
+                  <span
+                    className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                      isArchived
+                        ? "bg-slate-800 text-slate-400"
+                        : "bg-emerald-950 text-emerald-400"
+                    }`}
+                  >
+                    {isArchived ? "Archived" : "Active"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-800/70 bg-slate-900/60 p-4">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+                Quick Actions
+              </p>
+              <div className="mt-4 space-y-2">
+                {isHost && !isArchived && (
+                  <button
+                    onClick={() => {
+                      setExpenseForm({
+                        ...EXPENSE_FORM_DEFAULT,
+                        paid_by: user?.id || "",
+                      });
+                      setCustomSplits({});
+                      setShowAddExpense(true);
+                    }}
+                    className="w-full rounded-xl bg-emerald-500 text-black text-sm font-semibold py-2.5 hover:bg-emerald-400 transition"
+                  >
+                    + Add Expense
+                  </button>
+                )}
+                {isHost && !isArchived && (
+                  <button
+                    onClick={() => setShowAddMember(true)}
+                    className="w-full rounded-xl border border-slate-800 text-slate-300 text-sm font-semibold py-2.5 hover:border-emerald-500/40 hover:text-emerald-300 transition"
+                  >
+                    + Add Member
+                  </button>
+                )}
+                <button
+                  onClick={copyCode}
+                  className="w-full rounded-xl border border-slate-800 text-slate-300 text-sm font-semibold py-2.5 hover:border-emerald-500/40 hover:text-emerald-300 transition"
+                >
+                  Copy Invite Code
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+{/* ── Add Member Modal ── */}
       <AnimatePresence>
         {showAddMember && (
           <ModalShell onClose={closeAddMember}>
