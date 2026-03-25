@@ -261,7 +261,7 @@ export default function Register() {
           <span className="text-emerald-400 font-semibold">
             {form.email || pendingResendEmail}
           </span>.
-          Click the link to activate your account.
+          Please check your inbox and confirm your email address to finish setting up your account.
         </p>
         <Link
           to="/login"
