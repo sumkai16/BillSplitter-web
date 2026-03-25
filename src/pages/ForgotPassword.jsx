@@ -10,18 +10,28 @@ export default function ForgotPassword() {
 
     const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
+    const [emailError, setEmailError] = useState("");
     const [submitted, setSubmitted] = useState(false);
 
     const { resetPassword } = useAuth();
+
+    const getEmailError = (value) => {
+        if (!value || value.trim() === "") return "This field is required";
+        if (/\s/.test(value)) return "Email cannot contain spaces";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+            return "Please enter a valid email address";
+        return "";
+    };
 
     const handleSubmit = async (e) => {
 
         e.preventDefault();
 
-        if (!email) return toast.error("Please enter your email address");
-
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-            return toast.error("Please enter a valid email address");
+        const emailValidation = getEmailError(email);
+        if (emailValidation) {
+            setEmailError(emailValidation);
+            return toast.error(emailValidation);
+        }
 
         setLoading(true);
 
@@ -142,9 +152,18 @@ export default function ForgotPassword() {
                             type="email"
                             placeholder="Email address"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e) => {
+                                const nextValue = e.target.value;
+                                setEmail(nextValue);
+                                setEmailError(getEmailError(nextValue));
+                            }}
                             className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-700 bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition"
                         />
+                        {emailError && (
+                            <p className="mt-1 ml-1 text-xs text-red-400">
+                                {emailError}
+                            </p>
+                        )}
 
                     </div>
 
