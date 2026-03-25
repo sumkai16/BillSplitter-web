@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Lock, ArrowRight } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { supabase } from "../lib/supabase";
+import PageNavbar, { BrandLogo, NavbarLink } from "../components/PageNavbar";
 import {
     getPasswordError,
     getConfirmPasswordError,
@@ -68,6 +69,18 @@ export default function ResetPassword() {
         <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-black flex items-center justify-center p-6 text-white">
 
             <Toaster position="top-center" />
+            <PageNavbar
+                fixed
+                maxWidthClass="max-w-6xl"
+                className="border-transparent bg-transparent backdrop-blur-0"
+                left={<BrandLogo to="/landing" />}
+                right={
+                    <>
+                        <NavbarLink to="/landing" tone="subtle">Home</NavbarLink>
+                        <NavbarLink to="/login" tone="subtle">Sign In</NavbarLink>
+                    </>
+                }
+            />
 
             <motion.div
                 initial={{ opacity: 0, y: 24 }}
@@ -75,17 +88,6 @@ export default function ResetPassword() {
                 transition={{ duration: 0.4 }}
                 className="bg-slate-900 border border-slate-800 rounded-3xl shadow-xl w-full max-w-md p-10"
             >
-
-                <div className="flex justify-center mb-6">
-
-                    <img
-                        src="public/hlogo.png"
-                        alt="Logo"
-                        className="w-44 h-auto object-contain hover:scale-105 transition"
-                    />
-
-                </div>
-
                 <div className="text-center mb-8">
 
                     <h1 className="text-2xl font-semibold">

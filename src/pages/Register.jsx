@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { User, Mail, Lock, AtSign, ArrowRight } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { supabase } from "../lib/supabase";
+import PageNavbar, { BrandLogo, NavbarLink } from "../components/PageNavbar";
 import {
   getPasswordError,
   getConfirmPasswordError,
@@ -105,6 +106,18 @@ function InfoScreen({ emoji, title, children }) {
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-900 to-black text-white">
       <BackgroundBlobs />
+      <PageNavbar
+        fixed
+        maxWidthClass="max-w-6xl"
+        className="border-transparent bg-transparent backdrop-blur-0"
+        left={<BrandLogo to="/landing" />}
+        right={
+          <>
+            <NavbarLink to="/landing" tone="subtle">Home</NavbarLink>
+            <NavbarLink to="/login" tone="subtle">Sign In</NavbarLink>
+          </>
+        }
+      />
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -261,7 +274,7 @@ export default function Register() {
           <span className="text-emerald-400 font-semibold">
             {form.email || pendingResendEmail}
           </span>.
-          Click the link to activate your account.
+          Please check your inbox and confirm your email address to finish setting up your account.
         </p>
         <Link
           to="/login"
@@ -311,20 +324,24 @@ export default function Register() {
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-900 to-black text-white p-6">
       <BackgroundBlobs />
       <Toaster position="top-center" toastOptions={TOAST_STYLE} />
+      <PageNavbar
+        fixed
+        maxWidthClass="max-w-6xl"
+        className="border-transparent bg-transparent backdrop-blur-0"
+        left={<BrandLogo to="/landing" />}
+        right={
+          <>
+            <NavbarLink to="/landing" tone="subtle">Home</NavbarLink>
+            <NavbarLink to="/login" tone="subtle">Sign In</NavbarLink>
+          </>
+        }
+      />
 
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl p-10"
       >
-        <div className="flex justify-center mb-6">
-          <img
-            src="public/hlogo.png"
-            alt="Logo"
-            className="w-44 object-contain hover:scale-105 transition"
-          />
-        </div>
-
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold">Create Account</h1>
           <p className="text-slate-400 text-sm mt-1">Join Splitify and split bills with ease</p>

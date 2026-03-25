@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import PageNavbar, { BrandLogo, NavbarLink } from "../components/PageNavbar";
 
 export default function Login() {
 
@@ -14,7 +15,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const { signIn, resetPassword } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
 
   const getEmailError = (value) => {
@@ -91,40 +92,6 @@ export default function Login() {
     }
   };
 
-  const handleResetPassword = async (e) => {
-
-    e.preventDefault();
-
-    if (!email) {
-      setEmailError("This field is required");
-      return toast.error("Please enter your email address");
-    }
-
-    const emailValidation = getEmailError(email);
-
-    if (emailValidation) {
-      setEmailError(emailValidation);
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-
-      await resetPassword(email);
-      toast.success("Password reset link sent to your email");
-
-    } catch {
-
-      toast.error("Failed to send password reset link");
-
-    } finally {
-
-      setLoading(false);
-
-    }
-  };
-
   return (
 
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-black via-slate-900 to-black p-4 text-white">
@@ -135,21 +102,25 @@ export default function Login() {
 
       <Toaster position="top-center" />
 
+      <PageNavbar
+        fixed
+        maxWidthClass="max-w-6xl"
+        className="border-transparent bg-transparent backdrop-blur-0"
+        left={<BrandLogo to="/landing" />}
+        right={
+          <>
+            <NavbarLink to="/landing" tone="subtle">Home</NavbarLink>
+            <NavbarLink to="/register" tone="subtle">Register</NavbarLink>
+          </>
+        }
+      />
+
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7 }}
         className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-8"
       >
-
-        <div className="flex justify-center mb-6">
-          <img
-            src="public/hlogo.png"
-            alt="Logo"
-            className="w-44 object-contain hover:scale-105 transition"
-          />
-        </div>
-
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold">
             Welcome Back

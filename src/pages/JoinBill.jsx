@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "../lib/supabase";
+import { resolveBillMemberIdentityByEmail } from "../lib/memberIdentity";
 import { ArrowRight, Hash } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import PageNavbar, { BrandLogo, NavbarLink } from "../components/PageNavbar";
 
 //  Constants 
 
@@ -48,19 +50,24 @@ function PageShell({ children }) {
     return (
         <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-black flex items-center justify-center p-6 text-white">
             <Toaster position="top-center" toastOptions={TOAST_STYLE} />
+            <PageNavbar
+                fixed
+                maxWidthClass="max-w-6xl"
+                className="border-transparent bg-transparent backdrop-blur-0"
+                left={<BrandLogo to="/landing" />}
+                right={
+                    <>
+                        <NavbarLink to="/landing" tone="subtle">Home</NavbarLink>
+                        <NavbarLink to="/login" tone="subtle">Sign In</NavbarLink>
+                    </>
+                }
+            />
             <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
                 className="bg-slate-900/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-800 w-full max-w-md p-10"
             >
-                <div className="flex justify-center mb-6">
-                    <img
-                        src="public/hlogo.png"
-                        alt="Logo"
-                        className="w-40 h-auto object-contain hover:scale-105 transition"
-                    />
-                </div>
                 {children}
             </motion.div>
         </div>
@@ -161,14 +168,20 @@ export default function JoinBill() {
 
         setLoading(true);
         try {
-            // Get or create guest record
-            const { data: existingGuest } = await supabase
-                .from('guests')
-                .select('id')
-                .eq('email', email.trim())
-                .maybeSingle();
+            const identity = await resolveBillMemberIdentityByEmail({
+                billId: bill.id,
+                email,
+            });
 
-            let guestId = existingGuest?.id;
+            if (identity.kind === 'profile') {
+                const message = identity.isAlreadyMember
+                    ? 'This email already belongs to a registered member in this bill. Please sign in to continue.'
+                    : 'This email belongs to a registered account. Please sign in instead of joining as a guest.';
+                toast.error(message);
+                return;
+            }
+
+            let guestId = identity.guest?.id;
 
             if (!guestId) {
                 const { data: newGuest, error: guestError } = await supabase
@@ -176,7 +189,7 @@ export default function JoinBill() {
                     .insert({
                         first_name: firstName.trim(),
                         last_name: lastName.trim(),
-                        email: email.trim(),
+                        email: identity.normalizedEmail,
                     })
                     .select()
                     .single();
@@ -189,22 +202,14 @@ export default function JoinBill() {
                 guestId = newGuest.id;
             }
 
-            // Check if guest is already a member of this bill
-            const { data: existingMember } = await supabase
-                .from('bill_members')
-                .select('id, expires_at')
-                .eq('bill_id', bill.id)
-                .eq('guest_id', guestId)
-                .maybeSingle();
-
             const expiresAt = new Date(Date.now() + GUEST_SESSION_DURATION_MS).toISOString();
 
-            if (existingMember) {
+            if (identity.existingMember) {
                 // Refresh their expiry in DB
                 const { error: updateError } = await supabase
                     .from('bill_members')
                     .update({ expires_at: expiresAt })
-                    .eq('id', existingMember.id);
+                    .eq('id', identity.existingMember.id);
 
                 if (updateError) {
                     console.error('[handleInfoSubmit] update expires_at error:', updateError);
@@ -229,7 +234,7 @@ export default function JoinBill() {
             }
 
             // Save session to localStorage (for client-side context like name/email)
-            const session = buildGuestSession(guestId, bill.id, firstName, lastName, email.trim());
+            const session = buildGuestSession(guestId, bill.id, firstName, lastName, identity.normalizedEmail);
             localStorage.setItem('guest_session', JSON.stringify(session));
 
             toast.success('Joined successfully!');
