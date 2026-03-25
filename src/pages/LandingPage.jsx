@@ -2,6 +2,7 @@ import { Activity, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import PageNavbar, { BrandLogo, NavbarLink } from "../components/PageNavbar";
 import {
     Receipt, Users, Wallet,
     ArrowRight, ChevronDown, Menu, X,
@@ -37,51 +38,41 @@ function Navbar({ isAuthenticated }) {
     }, []);
 
     return (
-        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-black/90 backdrop-blur-md border-b border-slate-800" : "bg-transparent"}`}>
-            <div className="max-w-6xl mx-auto px-0 py-10 flex items-center justify-between">
-
-                <img src="public/hlogo.png" alt="BillSplitter" className="h-10 w-auto" />
-
-                <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-                    <a href="#about" className="hover:text-emerald-400">About</a>
-                    <a href="#how" className="hover:text-emerald-400">How It Works</a>
-                    <a href="#features" className="hover:text-emerald-400">Features</a>
-                </nav>
-
-                <div className="hidden md:flex items-center gap-3">
-                    {isAuthenticated ? (
-                        <>
-                            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-300">
-                                Session active
-                            </span>
-                            <Link
-                                to="/dashboard"
-                                className="text-sm font-semibold bg-emerald-500 text-black px-5 py-2.5 rounded-full hover:bg-emerald-400"
-                            >
-                                Open Dashboard
-                            </Link>
-                        </>
-                    ) : (
-                        <>
-                            <Link to="/login" className="text-sm font-semibold text-slate-300 hover:text-emerald-400 px-4 py-2">
-                                Sign In
-                            </Link>
-
-                            <Link
-                                to="/register"
-                                className="text-sm font-semibold bg-emerald-500 text-black px-5 py-2.5 rounded-full hover:bg-emerald-400"
-                            >
-                                Get Started Free
-                            </Link>
-                        </>
-                    )}
-                </div>
-
-                <button onClick={() => setOpen(!open)} className="md:hidden text-slate-300">
-                    {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                </button>
-            </div>
-        </header>
+        <PageNavbar
+            fixed
+            maxWidthClass="max-w-6xl"
+            className={scrolled ? "" : "border-transparent bg-transparent backdrop-blur-0"}
+            left={<BrandLogo to={isAuthenticated ? "/dashboard" : "/landing"} />}
+            center={
+                <>
+                    <a href="#about" className="text-sm font-medium text-slate-300 transition hover:text-emerald-400">About</a>
+                    <a href="#how" className="text-sm font-medium text-slate-300 transition hover:text-emerald-400">How It Works</a>
+                    <a href="#features" className="text-sm font-medium text-slate-300 transition hover:text-emerald-400">Features</a>
+                </>
+            }
+            right={
+                <>
+                    <div className="hidden md:flex items-center gap-2">
+                        {isAuthenticated ? (
+                            <>
+                                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-300">
+                                    Session active
+                                </span>
+                                <NavbarLink to="/dashboard" tone="primary">Open Dashboard</NavbarLink>
+                            </>
+                        ) : (
+                            <>
+                                <NavbarLink to="/login" tone="subtle">Sign In</NavbarLink>
+                                <NavbarLink to="/register" tone="primary">Get Started</NavbarLink>
+                            </>
+                        )}
+                    </div>
+                    <button onClick={() => setOpen(!open)} className="md:hidden text-slate-300">
+                        {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                    </button>
+                </>
+            }
+        />
     );
 }
 
@@ -314,7 +305,7 @@ function Footer() {
 
             <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
 
-                <img src="public/hlogo.png" alt="BillSplitter" className="h-8 w-auto" />
+                <img src="/hlogo.png" alt="BillSplitter" className="h-8 w-auto" />
 
                 <nav className="flex items-center gap-6 text-sm">
 

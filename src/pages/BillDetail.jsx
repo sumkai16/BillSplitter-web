@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import PageNavbar, { BrandLogo, NavbarButton } from "../components/PageNavbar";
+import UpgradeModal from "../components/UpgradeModal";
+import { useLimits } from "../hooks/useLimits";
+import { resolveBillMemberIdentityByEmail } from "../lib/memberIdentity";
 import { supabase } from "../lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
   Users,
   Receipt,
   Copy,
@@ -14,14 +17,13 @@ import {
   Check,
   UserCircle,
   Archive,
+  ArrowLeft,
   ChevronRight,
   Plus,
   CreditCard,
   Pencil,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
-import { useLimits } from "../hooks/useLimits";
-import UpgradeModal from "../components/UpgradeModal";
 
 //  Constants
 
@@ -56,7 +58,7 @@ function Spinner() {
   );
 }
 
-function ModalShell({ onClose, children }) {
+function ModalShell({ children }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -107,11 +109,10 @@ function SegmentedControl({ options, value, onChange }) {
           disabled={opt.disabled}
           aria-disabled={opt.disabled}
           title={opt.disabled ? opt.disabledReason : undefined}
-          className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${
-            value === opt.value
-              ? "bg-slate-700 text-white"
-              : "text-slate-500 hover:text-slate-300"
-          } ${opt.disabled ? "cursor-not-allowed opacity-50 hover:text-slate-500" : ""}`}
+          className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${value === opt.value
+            ? "bg-slate-700 text-white"
+            : "text-slate-500 hover:text-slate-300"
+            } ${opt.disabled ? "cursor-not-allowed opacity-50 hover:text-slate-500" : ""}`}
         >
           {opt.label}
         </button>
@@ -346,7 +347,7 @@ export default function BillDetail() {
   //  UI
   const [activeTab, setActiveTab] = useState("expenses");
   const [archiving, setArchiving] = useState(false);
-  const [guestSession, setGuestSession] = useState(null);
+  const [, setGuestSession] = useState(null);
 
   //  Inline bill
   const [editingBillName, setEditingBillName] = useState(false);
@@ -393,7 +394,7 @@ export default function BillDetail() {
     } else if (!user) {
       navigate("/login");
     }
-  }, []);
+  }, [navigate, user]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -536,13 +537,25 @@ export default function BillDetail() {
 
     setAddingMember(true);
     try {
-      const { data: existingGuest } = await supabase
-        .from("guests")
-        .select("id")
-        .eq("email", email.trim())
-        .maybeSingle();
+      const identity = await resolveBillMemberIdentityByEmail({
+        billId: id,
+        email,
+      });
 
-      let guestId = existingGuest?.id;
+      if (identity.kind === "profile") {
+        const message = identity.isAlreadyMember
+          ? "This registered user is already in the bill."
+          : "This email belongs to a registered account. Add them as a registered user instead of a guest.";
+        toast.error(message);
+        return;
+      }
+
+      if (identity.existingMember) {
+        toast.error("This guest is already in the bill.");
+        return;
+      }
+
+      let guestId = identity.guest?.id;
 
       if (!guestId) {
         const { data: newGuest, error: guestError } = await supabase
@@ -550,7 +563,7 @@ export default function BillDetail() {
           .insert({
             first_name: firstName.trim(),
             last_name: lastName.trim(),
-            email: email.trim(),
+            email: identity.normalizedEmail,
             invited_by: user.id,
           })
           .select()
@@ -823,6 +836,21 @@ export default function BillDetail() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Toaster position="top-center" toastOptions={TOAST_STYLE} />
+      <PageNavbar
+        sticky
+        maxWidthClass="max-w-6xl"
+        left={<BrandLogo to="/dashboard" />}
+        right={
+          <>
+            <NavbarButton onClick={() => navigate("/dashboard")}>Dashboard</NavbarButton>
+            {isHost && !isArchived && (
+              <NavbarButton onClick={handleArchiveBill} disabled={archiving}>
+                {archiving ? "Archiving..." : "Archive"}
+              </NavbarButton>
+            )}
+          </>
+        }
+      />
 
       {/* Top bar */}
       <div className="sticky top-0 z-10 border-b border-slate-900/70 bg-black/75 backdrop-blur-xl">
@@ -909,7 +937,7 @@ export default function BillDetail() {
           </div>
         </div>
       </div>
-{/* Page content */}
+      {/* Page content */}
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         {/* Hero summary card */}
         <motion.div
@@ -966,11 +994,10 @@ export default function BillDetail() {
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition capitalize ${
-                      activeTab === tab
-                        ? "bg-slate-800 text-white shadow-sm"
-                        : "text-slate-500 hover:text-slate-300"
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition capitalize ${activeTab === tab
+                      ? "bg-slate-800 text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-300"
+                      }`}
                   >
                     {tab === "expenses"
                       ? `Expenses (${expenses.length})`
@@ -1113,13 +1140,12 @@ export default function BillDetail() {
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                member.role === "host"
-                                  ? "bg-emerald-950 text-emerald-400"
-                                  : member.member_type === "guest"
-                                    ? "bg-slate-800 text-slate-400"
-                                    : "bg-teal-950 text-teal-400"
-                              }`}
+                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${member.role === "host"
+                                ? "bg-emerald-950 text-emerald-400"
+                                : member.member_type === "guest"
+                                  ? "bg-slate-800 text-slate-400"
+                                  : "bg-teal-950 text-teal-400"
+                                }`}
                             >
                               {member.role === "host"
                                 ? "host"
@@ -1179,11 +1205,10 @@ export default function BillDetail() {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Status</span>
                   <span
-                    className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                      isArchived
-                        ? "bg-slate-800 text-slate-400"
-                        : "bg-emerald-950 text-emerald-400"
-                    }`}
+                    className={`text-xs font-semibold px-2 py-1 rounded-full ${isArchived
+                      ? "bg-slate-800 text-slate-400"
+                      : "bg-emerald-950 text-emerald-400"
+                      }`}
                   >
                     {isArchived ? "Archived" : "Active"}
                   </span>
@@ -1191,7 +1216,7 @@ export default function BillDetail() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-800/70 bg-slate-900/60 p-4">
+            {/* <div className="rounded-2xl border border-slate-800/70 bg-slate-900/60 p-4">
               <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
                 Quick Actions
               </p>
@@ -1226,11 +1251,11 @@ export default function BillDetail() {
                   Copy Invite Code
                 </button>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
-{/* ── Add Member Modal ── */}
+      {/* ── Add Member Modal ── */}
       <AnimatePresence>
         {showAddMember && (
           <ModalShell onClose={closeAddMember}>

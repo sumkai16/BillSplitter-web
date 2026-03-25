@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
   AtSign,
   BadgeCheck,
   Calendar,
@@ -13,6 +12,7 @@ import {
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import PageNavbar, { BrandLogo, NavbarButton } from "../components/PageNavbar";
 
 const accountBadge = {
   guest: { label: "Guest", color: "bg-gray-800 text-gray-400" },
@@ -29,7 +29,7 @@ const emptyForm = {
 };
 
 export default function UserProfile() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -141,14 +141,14 @@ export default function UserProfile() {
         email: data?.email ?? "",
       });
       toast.success("Profile updated");
-    } catch (error) {
+    } catch {
       toast.error("Failed to update profile");
     } finally {
       setSaving(false);
     }
   };
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     navigate("/login");
   };
   if (!user) return null;
@@ -157,24 +157,19 @@ export default function UserProfile() {
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-black text-white">
       <Toaster position="top-center" />
 
-      {/* Header */}
-      <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-2 text-slate-400 hover:text-emerald-400 transition text-sm font-semibold"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
-          </button>
-          <img
-            src="public/hlogo.png"
-            alt="Logo"
-            className="w-36 h-auto object-contain cursor-pointer"
-            onClick={() => navigate("/dashboard")}
-          />
-        </div>
-      </div>
+      <PageNavbar
+        sticky
+        maxWidthClass="max-w-5xl"
+        left={<BrandLogo to="/dashboard" />}
+        right={
+          <>
+            <NavbarButton onClick={() => navigate("/dashboard")}>Dashboard</NavbarButton>
+            <NavbarButton onClick={handleLogout} tone="danger">
+              Sign out
+            </NavbarButton>
+          </>
+        }
+      />
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         {loading ? (
