@@ -4,23 +4,27 @@ import { supabase } from '../lib/supabase'
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+    const [session, setSession] = useState(null)
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         supabase.auth.getSession().then((response) => {
-            setUser(response?.data?.session?.user ?? null)
+            const nextSession = response?.data?.session ?? null
+            setSession(nextSession)
+            setUser(nextSession?.user ?? null)
             setLoading(false)
         })
         const result = supabase.auth.onAuthStateChange((_event, session) => {
-            // setUser(session?.user ?? null)
-
             if (_event === 'PASSWORD_RECOVERY') {
+                setSession(null)
                 setUser(null)
                 window.location.href = '/reset-password'
                 return
             }
+            setSession(session ?? null)
             setUser(session?.user ?? null)
+            setLoading(false)
         })
         return () => result.data.subscription.unsubscribe()
     }, [])
@@ -77,7 +81,7 @@ export function AuthProvider({ children }) {
         if (error) throw error;
     };
     return (
-        <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, resetPassword, resendConfirmation }}>
+        <AuthContext.Provider value={{ session, user, loading, signUp, signIn, signOut, resetPassword, resendConfirmation }}>
             {children}
         </AuthContext.Provider>
     )

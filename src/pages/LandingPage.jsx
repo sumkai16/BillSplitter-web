@@ -1,6 +1,7 @@
 import { Activity, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
 import {
     Receipt, Users, Wallet,
     ArrowRight, ChevronDown, Menu, X,
@@ -25,7 +26,7 @@ function FadeIn({ children, delay = 0, className = "" }) {
     );
 }
 
-function Navbar() {
+function Navbar({ isAuthenticated }) {
     const [open, setOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
 
@@ -48,16 +49,32 @@ function Navbar() {
                 </nav>
 
                 <div className="hidden md:flex items-center gap-3">
-                    <Link to="/login" className="text-sm font-semibold text-slate-300 hover:text-emerald-400 px-4 py-2">
-                        Sign In
-                    </Link>
+                    {isAuthenticated ? (
+                        <>
+                            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-300">
+                                Session active
+                            </span>
+                            <Link
+                                to="/dashboard"
+                                className="text-sm font-semibold bg-emerald-500 text-black px-5 py-2.5 rounded-full hover:bg-emerald-400"
+                            >
+                                Open Dashboard
+                            </Link>
+                        </>
+                    ) : (
+                        <>
+                            <Link to="/login" className="text-sm font-semibold text-slate-300 hover:text-emerald-400 px-4 py-2">
+                                Sign In
+                            </Link>
 
-                    <Link
-                        to="/register"
-                        className="text-sm font-semibold bg-emerald-500 text-black px-5 py-2.5 rounded-full hover:bg-emerald-400"
-                    >
-                        Get Started Free
-                    </Link>
+                            <Link
+                                to="/register"
+                                className="text-sm font-semibold bg-emerald-500 text-black px-5 py-2.5 rounded-full hover:bg-emerald-400"
+                            >
+                                Get Started Free
+                            </Link>
+                        </>
+                    )}
                 </div>
 
                 <button onClick={() => setOpen(!open)} className="md:hidden text-slate-300">
@@ -68,7 +85,7 @@ function Navbar() {
     );
 }
 
-function Hero() {
+function Hero({ isAuthenticated }) {
     return (
         <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-black via-slate-900 to-black pt-20 text-white">
 
@@ -90,22 +107,30 @@ function Hero() {
                     Easily manage shared bills with friends, roommates, or teammates.
                 </p>
 
+                {isAuthenticated && (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 mb-6">
+                        Your session is active
+                    </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
 
                     <Link
-                        to="/register"
+                        to={isAuthenticated ? "/dashboard" : "/register"}
                         className="group flex items-center gap-2 bg-emerald-500 text-black px-8 py-4 rounded-full font-bold hover:bg-emerald-400"
                     >
-                        Start for Free
+                        {isAuthenticated ? "Continue to Dashboard" : "Start for Free"}
                         <ArrowRight className="w-4 h-4" />
                     </Link>
 
-                    <Link
-                        to="/login"
-                        className="bg-slate-900 border border-slate-700 text-white px-8 py-4 rounded-full font-bold"
-                    >
-                        Sign In
-                    </Link>
+                    {!isAuthenticated && (
+                        <Link
+                            to="/login"
+                            className="bg-slate-900 border border-slate-700 text-white px-8 py-4 rounded-full font-bold"
+                        >
+                            Sign In
+                        </Link>
+                    )}
 
                     <Link
                         to="/join"
@@ -310,12 +335,14 @@ function Footer() {
 }
 
 export default function LandingPage() {
+    const { user } = useAuth();
+    const isAuthenticated = Boolean(user);
 
     return (
         <div className="font-sans antialiased bg-black text-white">
 
-            <Navbar />
-            <Hero />
+            <Navbar isAuthenticated={isAuthenticated} />
+            <Hero isAuthenticated={isAuthenticated} />
             <About />
             <HowItWorks />
             <Features />
