@@ -172,53 +172,97 @@ function AmountInput({ value, onChange, placeholder = "0.00" }) {
   );
 }
 
-//  Custom Split Rows (shared between Add and Edit modals)
+//  Custom Split Rows 
 
 function CustomSplitRows({ members, splits, onChange, expenseAmount }) {
-  const total = Object.values(splits).reduce(
-    (sum, v) => sum + Number(v || 0),
-    0,
-  );
+  const total = Object.values(splits).reduce((sum, v) => sum + Number(v || 0), 0);
   const remaining = Number(expenseAmount || 0) - total;
   const isBalanced = Math.abs(remaining) <= SPLIT_TOLERANCE;
+
+  // Track which members are included
+  const includedKeys = members
+    .map(m => m.user_id || m.guest_id)
+    .filter(key => splits[key] !== undefined && splits[key] !== null && splits[key] !== '0' && Number(splits[key]) > 0 || splits[key] === '');
+
+  const isIncluded = (key) => {
+    // A member is included if they have any entry in splits (even 0 during editing)
+    return Object.prototype.hasOwnProperty.call(splits, key);
+  };
+
+  const handleToggle = (key) => {
+    const newSplits = { ...splits };
+    if (isIncluded(key)) {
+      // Exclude — remove from splits
+      delete newSplits[key];
+    } else {
+      // Include — add back with 0, then redistribute
+      newSplits[key] = '0';
+    }
+    // Redistribute among remaining included members
+    const includedKeys = Object.keys(newSplits);
+    if (includedKeys.length > 0 && Number(expenseAmount) > 0) {
+      const equal = Number((Number(expenseAmount) / includedKeys.length).toFixed(2));
+      includedKeys.forEach(k => { newSplits[k] = String(equal); });
+    }
+    onChange(newSplits);
+  };
+
+  const handleAmountChange = (key, value) => {
+    onChange({ ...splits, [key]: value });
+  };
 
   return (
     <div className="space-y-2 pt-1">
       <div className="flex items-center justify-between">
         <p className="text-xs text-slate-500">Amount per person</p>
-        <p
-          className={`text-xs font-semibold ${isBalanced ? "text-emerald-400" : "text-amber-400"}`}
-        >
+        <p className={`text-xs font-semibold ${isBalanced ? 'text-emerald-400' : 'text-amber-400'}`}>
           {isBalanced
-            ? "✓ Balanced"
+            ? '✓ Balanced'
             : remaining > 0
               ? `₱${remaining.toFixed(2)} remaining`
-              : `₱${Math.abs(remaining).toFixed(2)} over`}
+              : `₱${Math.abs(remaining).toFixed(2)} over`
+          }
         </p>
       </div>
-      {members.map((member) => {
-        const name =
-          member.member_type === "guest"
-            ? `${member.guests?.first_name} ${member.guests?.last_name}`
-            : `${member.profiles?.first_name} ${member.profiles?.last_name}`;
+      {members.map(member => {
+        const name = member.member_type === 'guest'
+          ? `${member.guests?.first_name} ${member.guests?.last_name}`
+          : `${member.profiles?.first_name} ${member.profiles?.last_name}`;
         const key = member.user_id || member.guest_id;
+        const included = isIncluded(key);
+
         return (
-          <div key={member.id} className="flex items-center gap-3">
-            <span className="text-sm text-slate-400 flex-1 truncate">
+          <div key={member.id} className={`flex items-center gap-3 p-2 rounded-lg transition ${!included ? 'opacity-40' : ''}`}>
+            {/* Checkbox */}
+            <button
+              onClick={() => handleToggle(key)}
+              className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border transition ${included
+                ? 'bg-emerald-500 border-emerald-500 text-black'
+                : 'border-slate-600 hover:border-slate-400'
+                }`}
+            >
+              {included && <Check className="w-3 h-3" />}
+            </button>
+
+            <span className={`text-sm flex-1 truncate ${included ? 'text-slate-300' : 'text-slate-600'}`}>
               {name}
             </span>
-            <div className="relative">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">
-                ₱
-              </span>
-              <input
-                type="number"
-                placeholder="0.00"
-                value={splits[key] || ""}
-                onChange={(e) => onChange({ ...splits, [key]: e.target.value })}
-                className="w-28 pl-7 pr-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 text-sm"
-              />
-            </div>
+
+            {/* Amount input — only shown if included */}
+            {included ? (
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">₱</span>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={splits[key] || ''}
+                  onChange={e => handleAmountChange(key, e.target.value)}
+                  className="w-28 pl-7 pr-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 text-sm"
+                />
+              </div>
+            ) : (
+              <span className="text-xs text-slate-600 w-28 text-right pr-2">excluded</span>
+            )}
           </div>
         );
       })}
@@ -288,7 +332,22 @@ function ExpenseFormFields({
       <SegmentedControl
         options={SPLIT_OPTIONS}
         value={form.split_type}
-        onChange={(val) => onChange({ ...form, split_type: val })}
+        onChange={val => {
+          onChange({ ...form, split_type: val });
+          if (val === 'custom' && Number(form.amount) > 0) {
+            // Auto-fill equal amounts for all members
+            const equal = Number((Number(form.amount) / members.length).toFixed(2));
+            const filled = {};
+            members.forEach(m => {
+              const key = m.user_id || m.guest_id;
+              filled[key] = String(equal);
+            });
+            onCustomSplitsChange(filled);
+          }
+          if (val === 'equal') {
+            onCustomSplitsChange({});
+          }
+        }}
       />
       {isCustomDisabled && (
         <p className="text-[11px] text-slate-500">
@@ -309,24 +368,19 @@ function ExpenseFormFields({
 
 //  Validation helpers
 
-function validateExpenseForm(form, customSplits, membersCount) {
-  if (!form.name.trim()) return "Expense name is required";
-  if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0)
-    return "Enter a valid amount";
-  if (!form.paid_by) return "Select who paid";
-  if (form.split_type === "custom") {
-    if (membersCount < 3) return "Custom split requires at least 3 members";
-    const total = Object.values(customSplits).reduce(
-      (sum, v) => sum + Number(v || 0),
-      0,
-    );
-    if (Object.keys(customSplits).length === 0)
-      return "Enter amounts for each member";
+function validateExpenseForm(form, customSplits) {
+  if (!form.name.trim()) return 'Expense name is required';
+  if (!form.amount || isNaN(form.amount) || Number(form.amount) <= 0) return 'Enter a valid amount';
+  if (!form.paid_by) return 'Select who paid';
+  if (form.split_type === 'custom') {
+    const included = Object.keys(customSplits);
+    if (included.length === 0) return 'Include at least one member in the split';
+    const total = Object.values(customSplits).reduce((sum, v) => sum + Number(v || 0), 0);
     const diff = Math.abs(total - Number(form.amount));
     if (diff > SPLIT_TOLERANCE)
       return `Split total ₱${total.toFixed(2)} must equal ₱${Number(form.amount).toFixed(2)}`;
   }
-  return null; // valid
+  return null;
 }
 
 //  Main Component
@@ -744,23 +798,29 @@ export default function BillDetail() {
 
   const handleOpenExpense = async (expense) => {
     setSelectedExpense(expense);
-    setExpenseModalMode("view");
+    setExpenseModalMode('view');
     setEditExpenseForm({
       name: expense.name,
       amount: String(expense.amount),
       paid_by: expense.paid_by,
       split_type: expense.split_type,
     });
-    setEditCustomSplits({});
 
     const { data: splits, error } = await supabase
-      .from("expense_splits")
-      .select("*")
-      .eq("expense_id", expense.id);
-    if (error) console.error("[handleOpenExpense] splits error:", error);
-    setExpenseSplits(splits || []);
-  };
+      .from('expense_splits').select('*').eq('expense_id', expense.id);
+    if (error) console.error('[handleOpenExpense] splits error:', error);
 
+    setExpenseSplits(splits || []);
+
+    // Always pre-fill editCustomSplits from DB so edit mode has data ready
+    if (splits?.length > 0) {
+      const filled = {};
+      splits.forEach(s => { filled[s.user_id] = String(s.amount); });
+      setEditCustomSplits(filled);
+    } else {
+      setEditCustomSplits({});
+    }
+  };
   const handleSaveExpense = async () => {
     const validationError = validateExpenseForm(
       editExpenseForm,
@@ -1423,10 +1483,7 @@ export default function BillDetail() {
             >
               {expenseModalMode === "view" && isHost && !isArchived && (
                 <button
-                  onClick={() => {
-                    setEditCustomSplits({});
-                    setExpenseModalMode("edit");
-                  }}
+                  onClick={() => setExpenseModalMode('edit')}  // remove setEditCustomSplits({})
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400 text-xs font-medium transition"
                 >
                   <Pencil className="w-3.5 h-3.5" />
