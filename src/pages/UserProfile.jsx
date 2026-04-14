@@ -15,9 +15,18 @@ import { supabase } from "../lib/supabase";
 import PageNavbar, { BrandLogo, NavbarButton } from "../components/PageNavbar";
 
 const accountBadge = {
-  guest: { label: "Guest", color: "bg-gray-800 text-gray-400" },
-  standard: { label: "Standard", color: "bg-emerald-900/40 text-emerald-400" },
-  premium: { label: "Premium ⭐", color: "bg-amber-900/40 text-amber-400" },
+  guest: { label: "Guest", color: "bg-slate-800 text-slate-400" },
+  standard: { label: "Standard", color: "bg-emerald-950/60 text-emerald-300" },
+  premium: { label: "Premium", color: "bg-amber-950/60 text-amber-300" },
+};
+
+const TOAST_STYLE = {
+  style: {
+    background: "#1e293b",
+    color: "#fff",
+    border: "1px solid #334155",
+    fontSize: "13px",
+  },
 };
 
 const emptyForm = {
@@ -154,8 +163,15 @@ export default function UserProfile() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-black text-white">
-      <Toaster position="top-center" />
+    <div className="min-h-screen bg-[#050816] text-white">
+      <Toaster position="top-center" toastOptions={TOAST_STYLE} />
+
+      {/* Ambient Neon Blobs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-0 top-0 h-[28rem] w-[28rem] bg-emerald-500/12 blur-[140px]" />
+        <div className="absolute right-0 top-16 h-[24rem] w-[24rem] bg-cyan-500/10 blur-[120px]" />
+        <div className="absolute bottom-0 left-1/3 h-[20rem] w-[20rem] bg-emerald-300/8 blur-[120px]" />
+      </div>
 
       <PageNavbar
         sticky
@@ -171,7 +187,7 @@ export default function UserProfile() {
         }
       />
 
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+      <main className="relative max-w-5xl mx-auto px-6 py-8 space-y-8">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
@@ -182,19 +198,21 @@ export default function UserProfile() {
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-8 text-white shadow-xl"
+              className="overflow-hidden rounded-[34px] border border-emerald-500/15 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.22),_transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.94),rgba(10,14,31,0.96))] p-8 shadow-2xl shadow-black/35"
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-emerald-100 text-sm mb-1">Personal Profile</p>
-                  <h2 className="text-2xl font-bold">
+                  <p className="text-emerald-300 text-sm mb-1 uppercase tracking-widest font-semibold flex items-center gap-2">
+                     <User className="w-4 h-4" /> Personal Profile
+                  </p>
+                  <h2 className="text-3xl font-black tracking-tight mt-2 text-white">
                     {profile?.first_name} {profile?.last_name}
                   </h2>
-                  <p className="text-emerald-200 text-sm mt-1">
+                  <p className="text-emerald-400 font-medium text-sm mt-1">
                     @{profile?.username}
                   </p>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${badge.color}`}>
+                <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${badge.color}`}>
                   {badge.label}
                 </span>
               </div>
@@ -206,14 +224,19 @@ export default function UserProfile() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 }}
-                className="lg:col-span-2 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6"
+                className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl rounded-[30px] border border-slate-800/80 p-8 shadow-lg shadow-slate-950/30"
               >
-                <h3 className="font-bold text-white mb-5 flex items-center gap-2">
-                  <User className="w-4 h-4 text-emerald-400" />
-                  Personal Information
-                </h3>
+                <div className="mb-6 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-800 text-emerald-400">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-lg tracking-tight">Personal Information</h3>
+                    <p className="text-sm text-slate-400">Update your account details and identity.</p>
+                  </div>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <ProfileField
                     label="First Name"
                     value={form.firstName}
@@ -249,77 +272,88 @@ export default function UserProfile() {
                   />
                 </div>
 
-                <div className="flex flex-wrap gap-3 mt-6">
-                  <button
+                <div className="mt-8 flex flex-wrap items-center gap-4">
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -1 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={handleReset}
                     disabled={!isDirty || saving}
-                    className="px-4 py-2 rounded-xl border border-slate-700 text-slate-400 font-semibold hover:bg-slate-800 transition text-sm disabled:opacity-40"
+                    className="group relative flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/50 px-6 py-3 text-sm font-bold text-slate-400 transition-all hover:border-slate-700 hover:bg-slate-900 hover:text-slate-200 disabled:opacity-30 disabled:pointer-events-none"
                   >
-                    Reset
-                  </button>
+                    <span>Reset changes</span>
+                  </motion.button>
+
                   <motion.button
+                    whileHover={{ scale: 1.02, y: -1 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleSave}
                     disabled={!isDirty || saving}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition text-sm disabled:opacity-40 flex items-center gap-2"
+                    className="group relative flex items-center gap-2 overflow-hidden rounded-2xl bg-emerald-500 px-8 py-3 text-sm font-black uppercase tracking-wider text-emerald-950 shadow-[0_0_20px_rgba(16,185,129,0.2)] transition-all hover:bg-emerald-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] disabled:opacity-40 disabled:pointer-events-none"
                   >
-                    <Save className="w-4 h-4" />
-                    {saving ? "Saving..." : "Save Changes"}
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleLogout}
-                    className=" px-4 py-2 rounded-xl border border-slate-700 text-slate-400 font-semibold hover:bg-slate-800 transition text-sm"
-                  >
-                    Logout
+                    <Save className="h-4 w-4" />
+                    <span>{saving ? "Processing..." : "Commit changes"}</span>
                   </motion.button>
 
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -1 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleLogout}
+                    className="ml-auto rounded-2xl border border-slate-800 bg-slate-950/50 px-6 py-3 text-sm font-bold text-rose-400/80 transition-all hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400"
+                  >
+                    Disconnect account
+                  </motion.button>
                 </div>
               </motion.div>
 
               {/* Account Summary */}
-              <motion.div
+            <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-6 space-y-4"
+                className="bg-slate-900/60 backdrop-blur-xl rounded-[30px] border border-slate-800/80 p-8 shadow-lg shadow-slate-950/30"
               >
-                <h3 className="font-bold text-white mb-3 flex items-center gap-2">
-                  <BadgeCheck className="w-4 h-4 text-emerald-400" />
-                  Account Summary
-                </h3>
-
-                <SummaryRow
-                  label="Account Type"
-                  value={profile?.account_type}
-                  formatValue={(value) =>
-                    value ? value.charAt(0).toUpperCase() + value.slice(1) : "-"
-                  }
-                />
-                <SummaryRow
-                  label="Member Since"
-                  value={
-                    profile?.created_at
-                      ? new Date(profile.created_at).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })
-                      : "-"
-                  }
-                  icon={Calendar}
-                />
-                <SummaryRow
-                  label="Profile ID"
-                  value={profile?.id ? profile.id.slice(0, 8) : "-"}
-                />
+                <div className="mb-6 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
+                    <BadgeCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-lg tracking-tight">System details</h3>
+                  </div>
+                </div>
+                
+                <div className="space-y-2 mt-4">
+                  <SummaryRow
+                    label="Account Type"
+                    value={profile?.account_type}
+                    formatValue={(value) =>
+                      value ? value.charAt(0).toUpperCase() + value.slice(1) : "-"
+                    }
+                  />
+                  <SummaryRow
+                    label="Member Since"
+                    value={
+                      profile?.created_at
+                        ? new Date(profile.created_at).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                        : "-"
+                    }
+                    icon={Calendar}
+                  />
+                  <SummaryRow
+                    label="Profile ID"
+                    value={profile?.id ? profile.id.slice(0, 8) : "-"}
+                  />
+                </div>
               </motion.div>
 
             </div>
           </>
         )}
 
-      </div>
+      </main>
 
     </div>
   );
@@ -336,16 +370,16 @@ function ProfileField({
 }) {
   return (
     <label className={`space-y-1 text-sm text-slate-400 ${className}`}>
-      <span className="flex items-center gap-2 font-medium">
-        {Icon ? <Icon className="w-4 h-4 text-emerald-400" /> : null}
+      <span className="flex items-center gap-2 font-semibold uppercase tracking-wider text-[11px] text-slate-500">
+        {Icon ? <Icon className="w-3.5 h-3.5 text-emerald-500/70" /> : null}
         {label}
-        {required ? <span className="text-emerald-400">*</span> : null}
+        {required ? <span className="text-rose-400">*</span> : null}
       </span>
       <input
         type={type}
         value={value}
         onChange={onChange}
-        className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition"
+        className="w-full px-4 py-3 rounded-[14px] bg-slate-950/50 border border-slate-800/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 text-sm transition-all shadow-inner"
       />
     </label>
   );
@@ -355,9 +389,9 @@ function SummaryRow({ label, value, icon: Icon, formatValue }) {
   const displayValue =
     typeof formatValue === "function" ? formatValue(value) : value;
   return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0">
-      <div className="flex items-center gap-2 text-slate-400 text-sm">
-        {Icon ? <Icon className="w-4 h-4" /> : null}
+    <div className="flex items-center justify-between py-3.5 border-b border-slate-800/50 last:border-0 hover:bg-slate-800/20 transition-colors px-2 rounded-xl -mx-2">
+      <div className="flex items-center gap-2.5 text-slate-400 text-sm font-medium">
+        {Icon ? <Icon className="w-4 h-4 text-slate-500" /> : null}
         {label}
       </div>
       <span className="text-white text-sm font-medium">{displayValue || "-"}</span>

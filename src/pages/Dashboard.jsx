@@ -4,13 +4,17 @@ import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
+  ArrowUpRight,
   AtSign,
   Calendar,
+  Clock,
+  Hash,
   Mail,
   Receipt,
   Search,
   Shield,
   Sparkles,
+  User,
   Users,
   Wallet,
   Zap,
@@ -146,6 +150,7 @@ export default function Dashboard() {
   const [bills, setBills] = useState([]);
   const [activeMembers, setActiveMembers] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [billStats, setBillStats] = useState({});
 
   const [showCreateBill, setShowCreateBill] = useState(false);
   const [billName, setBillName] = useState("");
@@ -220,31 +225,50 @@ export default function Dashboard() {
         { data: membersData, error: membersError },
         { data: expenseData, error: expenseError },
       ] = await Promise.all([
-        supabase.from("bill_members").select("user_id, guest_id").in("bill_id", billIds),
-        supabase.from("expenses").select("amount").in("bill_id", billIds),
+        supabase.from("bill_members").select("bill_id, user_id, guest_id").in("bill_id", billIds),
+        supabase.from("expenses").select("bill_id, amount").in("bill_id", billIds),
       ]);
 
       if (cancelled) return;
+      
+      const statsMap = {};
+      billIds.forEach(id => statsMap[id] = { members: 0, total: 0 });
 
       if (membersError) {
         console.error("[Dashboard] members stats error:", membersError);
       } else {
-        const uniqueMembers = new Set(
-          (membersData || [])
-            .map((member) =>
-              member.user_id ? `u:${member.user_id}` : member.guest_id ? `g:${member.guest_id}` : null,
-            )
-            .filter(Boolean),
-        );
+        const uniqueMembers = new Set();
+        const memByBill = {};
+        
+        (membersData || []).forEach(m => {
+           if (!memByBill[m.bill_id]) memByBill[m.bill_id] = new Set();
+           const key = m.user_id ? `u:${m.user_id}` : m.guest_id ? `g:${m.guest_id}` : null;
+           if (key) {
+               memByBill[m.bill_id].add(key);
+               uniqueMembers.add(key);
+           }
+        });
+        
+        Object.keys(memByBill).forEach(bid => {
+           if (statsMap[bid]) statsMap[bid].members = memByBill[bid].size;
+        });
+
         setActiveMembers(uniqueMembers.size);
       }
 
       if (expenseError) {
         console.error("[Dashboard] expenses stats error:", expenseError);
       } else {
-        const total = (expenseData || []).reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+        let total = 0;
+        (expenseData || []).forEach(e => {
+           const amt = Number(e.amount || 0);
+           if (statsMap[e.bill_id]) statsMap[e.bill_id].total += amt;
+           total += amt;
+        });
         setTotalExpenses(total);
       }
+      
+      setBillStats(statsMap);
     };
 
     loadStats();
@@ -366,7 +390,6 @@ export default function Dashboard() {
         right={
           <>
             <NavbarButton onClick={() => navigate("/archive")}>Archive</NavbarButton>
-            <NavbarButton onClick={() => navigate("/profile")}>Profile</NavbarButton>
             <NavbarButton onClick={signOut} tone="danger">
               Sign out
             </NavbarButton>
@@ -395,7 +418,18 @@ export default function Dashboard() {
                     </div>
 
                     <p className="mt-6 text-sm text-slate-300">Welcome back</p>
-                    <h1 className="mt-2 text-4xl font-semibold tracking-tight text-white">Hi, {firstName}</h1>
+                    <div className="mt-2 flex items-center gap-4">
+                      <h1 className="text-4xl font-bold tracking-tight text-white">Hi, {firstName}</h1>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => navigate("/profile")}
+                        className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/40 text-slate-400 shadow-lg transition-all hover:border-emerald-500/30 hover:bg-slate-900 hover:text-emerald-400"
+                        title="View profile"
+                      >
+                        <User className="h-5 w-5" />
+                      </motion.button>
+                    </div>
                     <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300/90">
                       You currently have {bills.length} active bill{bills.length !== 1 ? "s" : ""},
                       {" "}with {activeMembers} people involved and {formatCurrency(totalExpenses)} in
@@ -578,7 +612,7 @@ export default function Dashboard() {
                   <select
                     value={billSort}
                     onChange={(event) => setBillSort(event.target.value)}
-                    className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300 focus:outline-none"
+                    className="cursor-pointer appearance-none rounded-2xl border border-slate-800 bg-slate-950 pl-4 pr-10 py-3 text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%24%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_12px_center] bg-no-repeat"
                   >
                     <option value="newest">Newest first</option>
                     <option value="oldest">Oldest first</option>
@@ -605,36 +639,68 @@ export default function Dashboard() {
                         }}
                         role="button"
                         tabIndex={0}
-                        className="group rounded-[28px] border border-slate-800/80 bg-slate-950/60 p-5 transition hover:border-emerald-500/35 hover:bg-slate-950"
+                        className="group flex flex-col gap-4 rounded-3xl border border-slate-800/80 bg-slate-900/40 p-5 outline-none transition-all duration-300 hover:border-emerald-500/40 hover:bg-slate-900/80 hover:shadow-[0_0_20px_rgba(16,185,129,0.05)] focus-visible:ring-2 focus-visible:ring-emerald-500 sm:flex-row sm:items-start sm:justify-between"
                       >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-3">
-                              <p className="truncate text-base font-semibold text-white">{bill.name}</p>
-                              <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
-                                {bill.status}
-                              </span>
-                            </div>
-                            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-400">
-                              <span>
-                                Invite code:{" "}
-                                <span className="font-mono font-medium text-slate-200">{bill.code}</span>
-                              </span>
-                              <span>Created {formatDate(bill.created_at)}</span>
-                            </div>
+                        <div className="flex w-full flex-col">
+                          <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-start">
+                            <h3 className="text-lg font-bold tracking-tight text-white transition-colors group-hover:text-emerald-50">
+                              {bill.name}
+                            </h3>
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold uppercase tracking-widest text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              {bill.status}
+                            </span>
                           </div>
 
-                          <div className="flex items-center gap-3">
-                            <span className="hidden text-sm text-slate-500 transition group-hover:text-slate-300 md:inline">
-                              Open bill
-                            </span>
-                            <button
-                              onClick={(event) => handleArchiveBill(event, bill.id)}
-                              className="rounded-2xl border border-slate-800 px-4 py-2.5 text-sm text-slate-300 transition hover:border-amber-500/40 hover:text-amber-300"
-                              title="Archive bill"
-                            >
-                              Archive
-                            </button>
+                          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 lg:gap-x-8">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-emerald-950 transition-colors">
+                                <Wallet className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">Expenses</span>
+                                <span className="text-sm font-bold text-slate-200">
+                                  {formatCurrency(billStats[bill.id]?.total || 0)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-slate-400 group-hover:bg-slate-700 transition-colors">
+                                <Users className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">Members</span>
+                                <span className="text-sm font-bold text-slate-200">
+                                  {billStats[bill.id]?.members || 1}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-slate-400 group-hover:bg-slate-700 transition-colors">
+                                <Clock className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">Created</span>
+                                <span className="text-sm font-medium text-slate-300">
+                                  {formatDate(bill.created_at)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex w-full items-center justify-end gap-3 border-t border-slate-800/60 pt-4 sm:w-auto sm:border-0 sm:pt-0 sm:self-center">
+                          <button
+                            onClick={(event) => handleArchiveBill(event, bill.id)}
+                            className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-2.5 text-xs font-bold text-slate-400 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-400 sm:px-3 sm:py-2"
+                            title="Archive bill"
+                          >
+                            Archive
+                          </button>
+                          <div className="flex items-center justify-center rounded-xl bg-slate-800/80 px-4 py-2.5 text-xs font-bold text-white transition group-hover:bg-emerald-500 group-hover:text-emerald-950 sm:px-3 sm:py-2">
+                            Open <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
                           </div>
                         </div>
                       </div>

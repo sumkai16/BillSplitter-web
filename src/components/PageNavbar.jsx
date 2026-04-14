@@ -2,19 +2,19 @@ import { Link } from "react-router-dom";
 
 const TONE_STYLES = {
   default:
-    "border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-700 hover:bg-slate-900",
+    "border-slate-800/60 bg-slate-900/40 text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-emerald-300",
   subtle:
-    "border-slate-800/80 bg-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-900/60",
+    "border-transparent bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900/40",
   danger:
-    "border-rose-500/25 bg-rose-500/5 text-rose-300 hover:bg-rose-500/10",
+    "border-rose-500/20 bg-rose-500/5 text-rose-300 hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-200",
   primary:
-    "border-emerald-500/30 bg-emerald-500 text-black hover:bg-emerald-400",
+    "border-emerald-400/50 bg-emerald-500 text-emerald-950 hover:bg-emerald-400 hover:border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]",
 };
 
 export function BrandLogo({ to = "/", className = "" }) {
   return (
-    <Link to={to} className={`flex items-center ${className}`}>
-      <img src="/hlogo.png" alt="Splitify" className="h-10 w-auto object-contain" />
+    <Link to={to} className={`flex items-center outline-none border-none focus:outline-none focus:ring-0 group ${className}`}>
+      <img src="/hlogo.png" alt="Splitify" className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.02]" />
     </Link>
   );
 }
@@ -29,7 +29,7 @@ export function NavbarLink({
   return (
     <Link
       to={to}
-      className={`rounded-2xl border px-4 py-2.5 text-sm font-medium transition ${TONE_STYLES[tone]} ${className}`}
+      className={`relative inline-flex items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${TONE_STYLES[tone]} ${className}`}
       {...props}
     >
       {children}
@@ -45,7 +45,7 @@ export function NavbarButton({
 }) {
   return (
     <button
-      className={`rounded-2xl border px-4 py-2.5 text-sm font-medium transition ${TONE_STYLES[tone]} ${className}`}
+      className={`relative inline-flex items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${TONE_STYLES[tone]} ${className}`}
       {...props}
     >
       {children}
@@ -71,14 +71,14 @@ export default function PageNavbar({
 
   return (
     <header
-      className={`${positionClass} z-40 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl ${className}`}
+      className={`${positionClass} z-50 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-2xl ${className}`}
     >
       <div
-        className={`mx-auto flex ${maxWidthClass} items-center justify-between gap-4 px-6 py-4 ${innerClassName}`}
+        className={`mx-auto flex h-20 ${maxWidthClass} items-center justify-between gap-4 px-6 sm:px-8 ${innerClassName}`}
       >
-        <div className="min-w-0 flex items-center gap-3">{left}</div>
-        {center ? <div className="hidden min-w-0 items-center gap-6 md:flex">{center}</div> : <div />} 
-        <div className="flex flex-wrap items-center justify-end gap-2">{right}</div>
+        <div className="min-w-0 flex items-center gap-6">{left}</div>
+        {center ? <div className="hidden min-w-0 items-center gap-6 md:flex">{center}</div> : <div className="flex-1" />} 
+        <div className="flex flex-wrap items-center justify-end gap-3">{right}</div>
       </div>
     </header>
   );
