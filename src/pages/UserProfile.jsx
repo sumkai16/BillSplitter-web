@@ -1,18 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   AtSign,
   BadgeCheck,
   Calendar,
+  Eye,
+  EyeOff,
+  KeyRound,
   Mail,
   Save,
+  ShieldCheck,
   User,
+  X,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import PageNavbar, { BrandLogo, NavbarButton } from "../components/PageNavbar";
+import { getConfirmPasswordError, getPasswordError } from "../utils/passwordValidation";
 
 const accountBadge = {
   guest: { label: "Guest", color: "bg-slate-800 text-slate-400" },
@@ -44,6 +50,7 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [pwModalOpen, setPwModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -175,7 +182,7 @@ export default function UserProfile() {
 
       <PageNavbar
         sticky
-        maxWidthClass="max-w-5xl"
+        maxWidthClass="max-w-6xl"
         left={<BrandLogo to="/dashboard" />}
         right={
           <>
@@ -187,7 +194,7 @@ export default function UserProfile() {
         }
       />
 
-      <main className="relative max-w-5xl mx-auto px-6 py-8 space-y-8">
+      <main className="relative max-w-6xl mx-auto px-6 py-8 space-y-8">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
@@ -203,7 +210,7 @@ export default function UserProfile() {
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-emerald-300 text-sm mb-1 uppercase tracking-widest font-semibold flex items-center gap-2">
-                     <User className="w-4 h-4" /> Personal Profile
+                    <User className="w-4 h-4" /> Personal Profile
                   </p>
                   <h2 className="text-3xl font-black tracking-tight mt-2 text-white">
                     {profile?.first_name} {profile?.last_name}
@@ -291,7 +298,7 @@ export default function UserProfile() {
                     className="group relative flex items-center gap-2 overflow-hidden rounded-2xl bg-emerald-500 px-8 py-3 text-sm font-black uppercase tracking-wider text-emerald-950 shadow-[0_0_20px_rgba(16,185,129,0.2)] transition-all hover:bg-emerald-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] disabled:opacity-40 disabled:pointer-events-none"
                   >
                     <Save className="h-4 w-4" />
-                    <span>{saving ? "Processing..." : "Commit changes"}</span>
+                    <span>{saving ? "Processing..." : "Save changes"}</span>
                   </motion.button>
 
                   <motion.button
@@ -306,11 +313,11 @@ export default function UserProfile() {
               </motion.div>
 
               {/* Account Summary */}
-            <motion.div
+              <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-slate-900/60 backdrop-blur-xl rounded-[30px] border border-slate-800/80 p-8 shadow-lg shadow-slate-950/30"
+                className="bg-slate-900/60 backdrop-blur-xl rounded-[30px] border border-slate-800/80 p-8 shadow-lg shadow-slate-950/30 flex flex-col"
               >
                 <div className="mb-6 flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
@@ -320,7 +327,7 @@ export default function UserProfile() {
                     <h3 className="font-bold text-white text-lg tracking-tight">System details</h3>
                   </div>
                 </div>
-                
+
                 <div className="space-y-2 mt-4">
                   <SummaryRow
                     label="Account Type"
@@ -347,7 +354,30 @@ export default function UserProfile() {
                     value={profile?.id ? profile.id.slice(0, 8) : "-"}
                   />
                 </div>
+
+                {/* Change Password */}
+                <div className="mt-6 pt-5 border-t border-slate-800/60">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setPwModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/8 px-5 py-3 text-sm font-bold text-emerald-400 transition-all hover:bg-emerald-500/15 hover:border-emerald-500/40 hover:text-emerald-300"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                    Change Password
+                  </motion.button>
+                </div>
               </motion.div>
+
+              {/* Change Password Modal */}
+              <AnimatePresence>
+                {pwModalOpen && (
+                  <ChangePasswordModal
+                    email={profile?.email ?? user?.email ?? ""}
+                    onClose={() => setPwModalOpen(false)}
+                  />
+                )}
+              </AnimatePresence>
 
             </div>
           </>
@@ -396,5 +426,213 @@ function SummaryRow({ label, value, icon: Icon, formatValue }) {
       </div>
       <span className="text-white text-sm font-medium">{displayValue || "-"}</span>
     </div>
+  );
+}
+
+function ChangePasswordModal({ email, onClose }) {
+  const dialogRef = useRef(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    // Focus the first input once mounted.
+    const input = dialogRef.current?.querySelector("input");
+    input?.focus?.();
+  }, []);
+
+  const validate = () => {
+    const pwError = getPasswordError(password);
+    if (pwError) return pwError;
+    const confirmError = getConfirmPasswordError(password, confirmPassword);
+    if (confirmError) return confirmError;
+    return "";
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const errorMessage = validate();
+    if (errorMessage) return toast.error(errorMessage);
+
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      toast.success("Password updated successfully");
+      onClose?.();
+    } catch {
+      toast.error("Failed to update password. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onMouseDown={onClose}
+      />
+
+      <motion.div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Change password"
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 420, damping: 32 }}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-slate-800/90 bg-slate-950/80 backdrop-blur-xl shadow-2xl shadow-black/40"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-800/70 px-6 py-5">
+          <div className="space-y-1">
+            <p className="text-emerald-300 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              Security
+            </p>
+            <h3 className="text-lg font-black tracking-tight text-white">
+              Change Password
+            </h3>
+            {email ? (
+              <p className="text-sm text-slate-400">
+                Updating password for <span className="text-slate-200">{email}</span>
+              </p>
+            ) : (
+              <p className="text-sm text-slate-400">Set a new password for your account.</p>
+            )}
+          </div>
+
+          <button
+            onClick={onClose}
+            className="rounded-2xl border border-slate-800 bg-slate-950/40 p-2 text-slate-300 transition hover:bg-slate-900 hover:text-white"
+            aria-label="Close modal"
+            type="button"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-6 space-y-4">
+          <div className="space-y-2">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              New password
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter a strong password"
+                className="w-full pr-11 px-4 py-3 rounded-[14px] bg-slate-950/50 border border-slate-800/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 text-sm transition-all"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl p-2 text-slate-400 transition hover:text-slate-200"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {password ? (
+              <p className="text-xs text-slate-500">
+                {getPasswordError(password) ? (
+                  <span className="text-rose-400/90">{getPasswordError(password)}</span>
+                ) : (
+                  <span className="text-emerald-400/90">Looks good.</span>
+                )}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              Confirm new password
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
+                className="w-full pr-11 px-4 py-3 rounded-[14px] bg-slate-950/50 border border-slate-800/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 text-sm transition-all"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl p-2 text-slate-400 transition hover:text-slate-200"
+                aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {confirmPassword ? (
+              <p className="text-xs text-slate-500">
+                {getConfirmPasswordError(password, confirmPassword) ? (
+                  <span className="text-rose-400/90">
+                    {getConfirmPasswordError(password, confirmPassword)}
+                  </span>
+                ) : (
+                  <span className="text-emerald-400/90">Passwords match.</span>
+                )}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              type="button"
+              onClick={onClose}
+              className="rounded-2xl border border-slate-800 bg-slate-950/40 px-5 py-3 text-sm font-bold text-slate-300 transition hover:bg-slate-900 hover:text-white"
+              disabled={submitting}
+            >
+              Cancel
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={submitting}
+              className="rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-black uppercase tracking-wider text-emerald-950 transition hover:bg-emerald-400 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {submitting ? "Updating..." : "Update password"}
+            </motion.button>
+          </div>
+
+          <div className="pt-4 border-t border-slate-800/70">
+            <p className="text-xs text-slate-500">
+              Tip: If you’re having trouble changing your password, use{" "}
+              <span className="text-slate-300 font-semibold">Forgot password</span>{" "}
+              on the login page to get a reset link.
+            </p>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
   );
 }

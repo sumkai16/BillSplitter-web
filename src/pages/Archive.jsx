@@ -51,7 +51,6 @@ export default function Archive() {
 
             <PageNavbar
                 sticky
-                maxWidthClass="max-w-4xl"
                 left={<BrandLogo to="/dashboard" />}
                 right={
                     <>
@@ -61,7 +60,7 @@ export default function Archive() {
                 }
             />
 
-            <div className="max-w-4xl mx-auto px-6 py-8">
+            <div className="max-w-6xl mx-auto px-6 py-8">
                 <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                     <div>
                         <p className="text-sm text-slate-400">Archive</p>

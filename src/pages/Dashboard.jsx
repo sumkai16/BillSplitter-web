@@ -397,7 +397,7 @@ export default function Dashboard() {
         }
       />
 
-      <main className="relative mx-auto max-w-7xl px-6 py-8">
+      <main className="relative mx-auto max-w-6xl px-6 py-8">
         {loading ? (
           <div className="flex min-h-[50vh] items-center justify-center">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-400 border-t-transparent" />

@@ -59,7 +59,7 @@ export default function PageNavbar({
   right,
   fixed = false,
   sticky = false,
-  maxWidthClass = "max-w-7xl",
+  maxWidthClass = "max-w-6xl",
   className = "",
   innerClassName = "",
 }) {
@@ -74,7 +74,7 @@ export default function PageNavbar({
       className={`${positionClass} z-50 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-2xl ${className}`}
     >
       <div
-        className={`mx-auto flex h-20 ${maxWidthClass} items-center justify-between gap-4 px-6 sm:px-8 ${innerClassName}`}
+        className={`mx-auto flex min-h-20 ${maxWidthClass} items-center justify-between gap-4 px-6 py-3 sm:px-8 ${innerClassName}`}
       >
         <div className="min-w-0 flex items-center gap-6">{left}</div>
         {center ? <div className="hidden min-w-0 items-center gap-6 md:flex">{center}</div> : <div className="flex-1" />} 

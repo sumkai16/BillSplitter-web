@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import PageNavbar, { BrandLogo, NavbarButton } from "../components/PageNavbar";
+import PageNavbar, { BrandLogo } from "../components/PageNavbar";
 import UpgradeModal from "../components/UpgradeModal";
 import { useLimits } from "../hooks/useLimits";
 import { resolveBillMemberIdentityByEmail } from "../lib/memberIdentity";
@@ -21,7 +21,7 @@ import {
   Check,
   UserCircle,
   Archive,
-  ArrowLeft,
+
   ChevronRight,
   Plus,
   CreditCard,
@@ -136,13 +136,25 @@ function SegmentedControl({ options, value, onChange }) {
   );
 }
 
-function DashedAddButton({ onClick, icon: Icon, label }) {
+function DashedAddButton({ onClick, icon: Icon, label, disabled = false, title }) {
   return (
     <button
       onClick={onClick}
-      className="group flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-800 bg-slate-950/30 py-4.5 text-sm font-bold text-slate-500 transition-all duration-300 hover:border-emerald-500/40 hover:bg-emerald-500/5 hover:text-emerald-400"
+      disabled={disabled}
+      title={title}
+      className={`group flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed py-4.5 text-sm font-bold transition-all duration-300 ${
+        disabled
+          ? "border-slate-800/60 bg-slate-950/20 text-slate-600 cursor-not-allowed opacity-70"
+          : "border-slate-800 bg-slate-950/30 text-slate-500 hover:border-emerald-500/40 hover:bg-emerald-500/5 hover:text-emerald-400"
+      }`}
     >
-      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 group-hover:bg-emerald-500 transition-colors group-hover:text-emerald-950">
+      <div
+        className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
+          disabled
+            ? "bg-slate-900/50 text-slate-600"
+            : "bg-slate-900 group-hover:bg-emerald-500 group-hover:text-emerald-950"
+        }`}
+      >
         {Icon ? <Icon className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
       </div>
       {label}
@@ -653,6 +665,7 @@ export default function BillDetail() {
     (profile?.account_type || "standard") === "standard";
   const hasReachedStandardMemberLimit =
     isHost && isStandardAccount && members.length >= MAX_STANDARD_MEMBERS;
+  const memberAddLocked = isHost && bill?.status !== "archived" && !canAddMember;
 
   //  Handlers
 
@@ -1059,36 +1072,13 @@ export default function BillDetail() {
 
       <PageNavbar
         sticky
-        maxWidthClass="max-w-6xl"
-        left={<BrandLogo to="/dashboard" />}
-        right={
-          <>
-            <NavbarButton onClick={() => navigate("/dashboard")}>Dashboard</NavbarButton>
-            {isHost && !isArchived && (
-              <NavbarButton onClick={confirmArchiveBill} disabled={archiving}>
-                {archiving ? "Archiving..." : "Archive"}
-              </NavbarButton>
-            )}
-          </>
-        }
-      />
-
-      {/* Top bar */}
-      <div className="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-2xl shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        left={
           <div className="flex items-center gap-4 min-w-0">
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="group relative w-10 h-10 flex items-center justify-center rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-900/80 border border-slate-700/50 text-slate-400 hover:text-white transition-all overflow-hidden shadow-sm flex-shrink-0"
-              title="Back to Dashboard"
-            >
-              <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <ArrowLeft className="w-4 h-4 relative z-10 group-hover:-translate-x-0.5 transition-transform" />
-            </button>
-
-            {/* Bill Info Container */}
+            <BrandLogo to="/dashboard" />
+            <span className="hidden sm:block w-px h-8 bg-slate-800/80" />
+            {/* Bill Info */}
             <div className="min-w-0 flex flex-col justify-center">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
                 <span>Workspace</span>
                 <ChevronRight className="w-3 h-3 text-slate-700" />
                 <span className="text-emerald-500/80">Bill {String(id).slice(0, 4)}</span>
@@ -1124,7 +1114,7 @@ export default function BillDetail() {
                 </div>
               ) : (
                 <div 
-                  className={`flex items-center gap-2.5 min-w-0 group mt-0.5 ${isHost && !isArchived ? "cursor-pointer" : ""}`}
+                  className={`flex items-center gap-2 min-w-0 group mt-0.5 ${isHost && !isArchived ? "cursor-pointer" : ""}`}
                   onClick={() => {
                     if (isHost && !isArchived) {
                       setBillNameInput(bill.name);
@@ -1132,21 +1122,21 @@ export default function BillDetail() {
                     }
                   }}
                 >
-                  <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate transition-colors group-hover:text-emerald-50">
+                  <h1 className="text-lg font-black text-white tracking-tight truncate transition-colors group-hover:text-emerald-50">
                     {bill.name}
                   </h1>
                   {isHost && !isArchived && (
-                    <span className="w-6 h-6 flex items-center justify-center rounded-md bg-transparent text-slate-500 transition-all opacity-0 group-hover:opacity-100 group-hover:bg-slate-800/80 group-hover:text-emerald-400 flex-shrink-0 shadow-sm border border-transparent group-hover:border-slate-700/50">
-                      <Pencil className="w-3.5 h-3.5" />
+                    <span className="w-5 h-5 flex items-center justify-center rounded-md bg-transparent text-slate-500 transition-all opacity-0 group-hover:opacity-100 group-hover:bg-slate-800/80 group-hover:text-emerald-400 flex-shrink-0">
+                      <Pencil className="w-3 h-3" />
                     </span>
                   )}
                 </div>
               )}
               
               {!editingBillName && (
-                <div className="mt-1 flex items-center gap-2.5 text-xs text-slate-500 font-medium">
-                  <div className="flex items-center gap-1.5">
-                    <UserCircle className="w-3.5 h-3.5 text-slate-600" />
+                <div className="flex items-center gap-2.5 text-xs text-slate-500 font-medium">
+                  <div className="flex items-center gap-1">
+                    <UserCircle className="w-3 h-3 text-slate-600" />
                     <span>{members.length} Member{members.length !== 1 ? "s" : ""}</span>
                   </div>
                   <span className="w-1 h-1 rounded-full bg-slate-700" />
@@ -1155,7 +1145,8 @@ export default function BillDetail() {
               )}
             </div>
           </div>
-
+        }
+        right={
           <div className="flex flex-wrap items-center gap-3">
             {isHost && !isArchived && (
               <button
@@ -1173,8 +1164,8 @@ export default function BillDetail() {
               {bill.status}
             </div>
           </div>
-        </div>
-      </div>
+        }
+      />
       {/* Page content */}
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         {/* Hero summary card */}
@@ -1356,16 +1347,29 @@ export default function BillDetail() {
                 >
                   {isHost && !isArchived && (
                     <DashedAddButton
-                      onClick={() => setShowAddMember(true)}
+                      onClick={() => {
+                        if (!canAddMember) return;
+                        setShowAddMember(true);
+                      }}
                       icon={UserPlus}
                       label={`Add Member${!canAddMember ? ` (${memberLimit}/${memberLimit})` : ""}`}
+                      disabled={!canAddMember}
+                      title={!canAddMember ? "Member limit reached" : "Add a member"}
                     />
                   )}
-                  {hasReachedStandardMemberLimit && (
-                    <p className="text-xs text-amber-400 mb-3">
-                      Standard accounts can have up to {MAX_STANDARD_MEMBERS}{" "}
-                      members per bill.
-                    </p>
+                  {memberAddLocked && (
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800/70 bg-slate-950/30 px-4 py-3">
+                      <p className="text-xs text-slate-400">
+                        Member limit reached for this plan.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowUpgradeModal(true)}
+                        className="text-xs font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition"
+                      >
+                        Upgrade
+                      </button>
+                    </div>
                   )}
 
                   <div className="space-y-3">
@@ -1633,9 +1637,9 @@ export default function BillDetail() {
 
             {memberType === "registered" && (
               <div className="space-y-3">
-                {hasReachedStandardMemberLimit && (
+                {memberAddLocked && (
                   <p className="text-xs text-amber-400 text-center py-2">
-                    Member limit reached for Standard accounts.
+                    Member limit reached for this plan.
                   </p>
                 )}
                 <div className="relative">
@@ -1645,7 +1649,7 @@ export default function BillDetail() {
                     placeholder="Search by username..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    disabled={hasReachedStandardMemberLimit}
+                    disabled={memberAddLocked}
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 text-sm"
                   />
                 </div>
@@ -1657,9 +1661,11 @@ export default function BillDetail() {
                 {searchResults.length > 0 && (
                   <div className="space-y-1.5">
                     {searchResults.map((profile) => (
-                      <div
+                      <button
                         key={profile.id}
-                        className="flex items-center justify-between p-3 rounded-xl bg-slate-800/60 border border-slate-700/40 hover:border-slate-600 transition"
+                        onClick={() => handleAddRegistered(profile)}
+                        disabled={addingMember || memberAddLocked}
+                        className="flex items-center justify-between w-full p-3 rounded-xl bg-slate-800/60 border border-slate-700/40 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition cursor-pointer text-left disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <div>
                           <p className="text-sm font-medium text-white">
@@ -1669,16 +1675,10 @@ export default function BillDetail() {
                             @{profile.username}
                           </p>
                         </div>
-                        <button
-                          onClick={() => handleAddRegistered(profile)}
-                          disabled={
-                            addingMember || hasReachedStandardMemberLimit
-                          }
-                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-950 hover:bg-emerald-500 text-emerald-400 hover:text-black transition"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                      </div>
+                        <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-950 text-emerald-400 transition">
+                          <UserPlus className="w-4 h-4" />
+                        </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -1694,9 +1694,9 @@ export default function BillDetail() {
 
             {memberType === "guest" && (
               <div className="space-y-3">
-                {hasReachedStandardMemberLimit && (
+                {memberAddLocked && (
                   <p className="text-xs text-amber-400 text-center py-2">
-                    Member limit reached for Standard accounts.
+                    Member limit reached for this plan.
                   </p>
                 )}
                 <div className="grid grid-cols-2 gap-2.5">
@@ -1706,7 +1706,7 @@ export default function BillDetail() {
                     onChange={(e) =>
                       setGuestForm({ ...guestForm, firstName: e.target.value })
                     }
-                    disabled={hasReachedStandardMemberLimit}
+                    disabled={memberAddLocked}
                   />
                   <TextInput
                     placeholder="Last Name"
@@ -1714,7 +1714,7 @@ export default function BillDetail() {
                     onChange={(e) =>
                       setGuestForm({ ...guestForm, lastName: e.target.value })
                     }
-                    disabled={hasReachedStandardMemberLimit}
+                    disabled={memberAddLocked}
                   />
                 </div>
                 <TextInput
@@ -1724,11 +1724,11 @@ export default function BillDetail() {
                   onChange={(e) =>
                     setGuestForm({ ...guestForm, email: e.target.value })
                   }
-                  disabled={hasReachedStandardMemberLimit}
+                  disabled={memberAddLocked}
                 />
                 <button
                   onClick={handleAddGuest}
-                  disabled={addingMember || hasReachedStandardMemberLimit}
+                  disabled={addingMember || memberAddLocked}
                   className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl font-semibold text-sm transition disabled:opacity-50"
                 >
                   {addingMember ? "Adding..." : "Add Guest"}
