@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { motion } from "framer-motion";
-import { Receipt } from "lucide-react";
+import { Receipt, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import PageNavbar, { BrandLogo, NavbarButton } from "../components/PageNavbar";
@@ -12,6 +12,7 @@ export default function Archive() {
     const navigate = useNavigate();
     const [archivedBills, setArchivedBills] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         const fetchArchived = async () => {
@@ -39,13 +40,17 @@ export default function Archive() {
         setArchivedBills(prev => prev.filter(b => b.id !== billId));
     };
 
+    const filteredArchivedBills = archivedBills.filter((bill) =>
+        bill.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        bill.code.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-black text-white">
             <Toaster position="top-center" />
 
             <PageNavbar
                 sticky
-                maxWidthClass="max-w-4xl"
                 left={<BrandLogo to="/dashboard" />}
                 right={
                     <>
@@ -55,11 +60,24 @@ export default function Archive() {
                 }
             />
 
-            <div className="max-w-4xl mx-auto px-6 py-8">
-                <div className="mb-6">
-                    <p className="text-sm text-slate-400">Archive</p>
-                    <h1 className="mt-2 text-2xl font-semibold text-white">Archived Bills</h1>
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <div>
+                        <p className="text-sm text-slate-400">Archive</p>
+                        <h1 className="mt-2 text-2xl font-semibold text-white">Archived Bills</h1>
+                    </div>
+                    <div className="relative w-full max-w-sm">
+                        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                        <input
+                            type="text"
+                            placeholder="Search by name or code..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full rounded-2xl border border-slate-800 bg-slate-900/60 px-11 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shadow-inner backdrop-blur-sm"
+                        />
+                    </div>
                 </div>
+
                 {loading ? (
                     <div className="flex justify-center py-20">
                         <div className="w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
@@ -69,9 +87,14 @@ export default function Archive() {
                         <span className="text-4xl">📦</span>
                         <p className="text-slate-400 text-sm mt-3">No archived bills yet.</p>
                     </div>
+                ) : filteredArchivedBills.length === 0 ? (
+                    <div className="text-center py-20 rounded-[28px] border border-dashed border-slate-800 bg-slate-900/40">
+                        <span className="text-4xl">🔍</span>
+                        <p className="text-slate-400 text-sm mt-3">No archives match your search.</p>
+                    </div>
                 ) : (
                     <div className="space-y-3">
-                        {archivedBills.map((bill, i) => (
+                        {filteredArchivedBills.map((bill, i) => (
                             <motion.div
                                 key={bill.id}
                                 initial={{ opacity: 0, y: 20 }}

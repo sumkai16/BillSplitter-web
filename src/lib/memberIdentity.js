@@ -73,3 +73,40 @@ export async function resolveBillMemberIdentityByEmail({ billId, email }) {
     isAlreadyMember: Boolean(existingGuestMember),
   };
 }
+
+/**
+ * Lightweight email-only lookup (no billId needed).
+ * Returns { kind: 'profile' | 'guest' | 'new', profile?, guest?, normalizedEmail }
+ */
+export async function resolveEmailIdentity(email) {
+  const normalizedEmail = normalizeEmail(email);
+
+  // 1. Check profiles (registered users)
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, email, first_name, last_name")
+    .ilike("email", normalizedEmail)
+    .maybeSingle();
+
+  if (profileError) throw profileError;
+
+  if (profile) {
+    return { normalizedEmail, kind: "profile", profile, guest: null };
+  }
+
+  // 2. Check guests
+  const { data: guest, error: guestError } = await supabase
+    .from("guests")
+    .select("id, email, first_name, last_name")
+    .ilike("email", normalizedEmail)
+    .maybeSingle();
+
+  if (guestError) throw guestError;
+
+  if (guest) {
+    return { normalizedEmail, kind: "guest", profile: null, guest };
+  }
+
+  // 3. Brand-new email
+  return { normalizedEmail, kind: "new", profile: null, guest: null };
+}
